@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>配一套自己发的电</title>
+<style>
+  :root{
+    --ink:#1f2933; --ink2:#52606d; --ink3:#7b8794;
+    --line:#d9e2ec; --line2:#eef2f7; --paper:#f4f7fa; --card:#ffffff;
+    --accent:#b45309; --accent2:#f59e0b; --solar:#d97706; --bat:#0e7490;
+    --ok:#15803d; --warn:#b45309; --err:#b91c1c;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    overflow-x:hidden; -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 72px}
+  header.top{margin-bottom:16px}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:.4px}
+  .tagline{color:var(--ink2);font-size:14px;margin:0 0 6px}
+  .sub{color:var(--ink3);font-size:12.5px;margin:0}
+
+  /* ── 结论带：像单据底部的「合计」 ── */
+  .concl{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--solar);
+    border-radius:10px;padding:16px 18px;margin:16px 0 18px}
+  .concl .lead{font-size:13px;color:var(--ink2);margin-bottom:12px}
+  .concl .lead b{color:var(--ink)}
+  .quad{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  .quad .q{min-width:0}
+  .quad .k{font-size:12px;color:var(--ink3);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .quad .v{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1.2;letter-spacing:-.3px}
+  .quad .v small{font-size:12px;font-weight:400;color:var(--ink3);margin-left:3px}
+  .quad .d{font-size:11.5px;color:var(--ink3);margin-top:4px}
+  .q.p .v{color:var(--solar)} .q.b .v{color:var(--bat)} .q.c .v{color:var(--ink)} .q.i .v{color:var(--ink)}
+  .concl .foot{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);
+    font-size:12.5px;color:var(--ink2);display:flex;flex-wrap:wrap;gap:6px 16px}
+
+  /* ── 报错条 ── */
+  .errbar{display:none;background:#fef2f2;border:1px solid #fecaca;border-left:5px solid var(--err);
+    border-radius:10px;padding:13px 16px;margin:0 0 18px}
+  .errbar.on{display:block}
+  .errbar h2{font-size:13.5px;margin:0 0 7px;color:var(--err)}
+  .errbar ul{margin:0;padding-left:19px;font-size:13px;color:#7f1d1d}
+  .errbar li{margin:2px 0}
+  .errbar .more{font-size:12px;color:var(--ink3);margin:6px 0 0}
+
+  /* ── 区块 ── */
+  section.blk{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 16px 17px;margin-bottom:16px}
+  .bh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:4px}
+  .bh .no{font-family:var(--mono);font-size:12px;color:var(--solar);font-weight:700;letter-spacing:1px}
+  .bh h2{font-size:15px;margin:0;letter-spacing:.2px}
+  .bh .tail{margin-left:auto;font-size:12px;color:var(--ink3)}
+  .bnote{font-size:12.5px;color:var(--ink3);margin:0 0 12px}
+
+  /* ── 表单 ── */
+  label.lb{display:block;font-size:12px;color:var(--ink2);margin-bottom:4px}
+  input[type=text],input[type=number],select{
+    width:100%;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;
+    font:inherit;font-size:13.5px;color:var(--ink);font-family:var(--mono);
+  }
+  input[type=text],input[type=number]{text-align:right}
+  input.name{font-family:inherit;text-align:left}
+  input:focus,select:focus{outline:2px solid var(--accent2);outline-offset:-1px;border-color:var(--accent2)}
+  input.bad{border-color:var(--err);background:#fff5f5}
+  .hint{font-size:11px;color:var(--ink3);margin-top:3px;line-height:1.4}
+  .hint.bad{color:var(--err)}
+  select{text-align:left}
+  button{font:inherit;cursor:pointer}
+  .btn{padding:7px 13px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font-size:13px}
+  .btn:hover{border-color:var(--accent2);background:#fffbeb}
+  .btn.pri{background:var(--solar);border-color:var(--solar);color:#fff}
+  .btn.pri:hover{background:#b45309}
+  .btn.sm{padding:4px 9px;font-size:12px}
+  .btn.x{padding:3px 8px;font-size:12px;color:var(--ink3);border-color:transparent;background:transparent}
+  .btn.x:hover{color:var(--err);border-color:var(--line)}
+
+  /* ── 负载表 ── */
+  .tblwrap{overflow-x:auto;margin:0 -2px}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  table.tbl th{font-weight:600;font-size:11.5px;color:var(--ink3);text-align:right;padding:0 5px 6px;white-space:nowrap}
+  table.tbl th.l{text-align:left}
+  table.tbl td{padding:3px 4px;vertical-align:middle}
+  table.tbl td.num{font-family:var(--mono);text-align:right;font-size:12.5px;white-space:nowrap}
+  table.tbl tfoot td{border-top:1px solid var(--line);padding-top:8px;font-size:13px}
+  table.tbl tfoot .lbl{color:var(--ink2)}
+  table.tbl tfoot .val{font-family:var(--mono);font-weight:600;font-size:15px;text-align:right}
+  .acdc{display:flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .acdc button{flex:1;border:0;background:#fff;font-size:11.5px;padding:6px 2px;color:var(--ink2);white-space:nowrap}
+  .acdc button.on{background:var(--solar);color:#fff}
+  .acdc button+button{border-left:1px solid var(--line)}
+  .chk{display:flex;align-items:center;justify-content:center}
+  .chk input{width:16px;height:16px;accent-color:var(--solar)}
+  .rowact{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+  .rowE{font-family:var(--mono);font-weight:600}
+  .rowE.na{color:var(--err);font-weight:400;font-size:11.5px}
+
+  /* ── 参数网格 ── */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px}
+  .grid .f{min-width:0}
+
+  /* ── 配置单 ── */
+  table.sheet{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed}
+  table.sheet th{font-weight:600;font-size:11.5px;color:var(--ink3);text-align:left;padding:0 6px 7px}
+  table.sheet td{padding:8px 6px;border-top:1px solid var(--line2);vertical-align:top}
+  table.sheet td.part{color:var(--ink2);white-space:nowrap}
+  table.sheet td.spec{font-family:var(--mono);font-weight:600;font-size:15px;white-space:nowrap}
+  table.sheet td.cnt{font-family:var(--mono);white-space:nowrap;color:var(--ink2)}
+  table.sheet td.why{font-size:12px;color:var(--ink3)}
+
+  /* ── 阴雨时间线 ── */
+  .rain{display:flex;gap:8px;overflow-x:auto;padding:3px 1px 9px}
+  .day{flex:0 0 104px;border:1px solid var(--line);border-radius:8px;padding:8px 9px;background:#fff}
+  .day .dt{font-size:11.5px;color:var(--ink3);margin-bottom:6px}
+  .day .bar{height:8px;border-radius:4px;background:var(--line2);overflow:hidden;margin-bottom:6px}
+  .day .bar i{display:block;height:100%;background:var(--bat)}
+  .day .qv{font-family:var(--mono);font-size:12.5px;font-weight:600}
+  .day.short{border-color:#fecaca;background:#fff5f5}
+  .day.short .bar i{background:var(--err)}
+  .day.empty .qv{color:var(--err)}
+  .rv{font-size:13.5px;margin:2px 0 0}
+  .rv b{font-family:var(--mono)}
+  .rv .dd{font-size:12.5px;color:var(--ink3);margin-top:3px}
+
+  /* ── 反推 ── */
+  .havegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:12px}
+  .verdict{border:1px solid var(--line);border-left:4px solid var(--ink3);border-radius:8px;padding:11px 13px;background:var(--line2)}
+  .verdict.ok{border-left-color:var(--ok);background:#f0fdf4}
+  .verdict.short{border-left-color:var(--warn);background:#fffbeb}
+  .verdict .vt{font-size:14px;font-weight:600;margin-bottom:4px}
+  .verdict.ok .vt{color:var(--ok)} .verdict.short .vt{color:var(--warn)}
+  .verdict .vd{font-size:12.5px;color:var(--ink2)}
+  .verdict .vd span{font-family:var(--mono)}
+
+  /* ── 建议 ── */
+  .adv{list-style:none;margin:0;padding:0}
+  .adv li{border:1px solid var(--line);border-radius:8px;padding:11px 13px;margin-bottom:9px;display:flex;gap:12px;align-items:flex-start}
+  .adv li:last-child{margin-bottom:0}
+  .adv .txt{flex:1;min-width:0}
+  .adv .t{font-size:13.5px;font-weight:600}
+  .adv .w{font-size:12.5px;color:var(--ink2);margin-top:3px}
+  .adv .none{font-size:13px;color:var(--ink3)}
+
+  /* ── 边界 ── */
+  ul.bound{margin:0;padding-left:19px;font-size:13px;color:var(--ink2)}
+  ul.bound li{margin:4px 0}
+  ul.bound b{color:var(--ink)}
+
+  /* ── 导出 ── */
+  .exp{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .22s;z-index:20;max-width:90vw;text-align:center}
+  .toast.on{opacity:1}
+  footer.ft{margin-top:18px;font-size:12px;color:var(--ink3);line-height:1.65}
+  footer.ft b{color:var(--ink2)}
+
+  /* ── 窄屏：表格转成堆叠卡，仍然不横向溢出 ── */
+  @media (max-width:820px){
+    .quad{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media (max-width:700px){
+    .wrap{padding:16px 12px 64px}
+    h1{font-size:20px}
+    .quad .v{font-size:19px}
+    table.tbl,table.tbl tbody,table.tbl tfoot,table.tbl tr,table.tbl td{display:block;width:100%}
+    table.tbl thead{display:none}
+    /* 窄屏：每行负载变成一张两列小卡（名称/供电/合计/删除占整行，其余两两并排）。
+       原来是一列到底，7 行要滚 4200 px；排成两列后大约省一半高度。 */
+    table.tbl tr{border:1px solid var(--line);border-radius:9px;padding:11px 12px 12px;margin-bottom:10px;background:#fff;
+      display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px 10px;align-items:end}
+    table.tbl td{padding:0;margin:0;min-width:0}
+    table.tbl td::before{content:attr(data-label);display:block;font-size:11px;color:var(--ink3);margin-bottom:3px}
+    table.tbl td:nth-child(1){order:1;grid-column:1/-1}
+    table.tbl td:nth-child(2){order:2}
+    table.tbl td:nth-child(3){order:3}
+    table.tbl td:nth-child(4){order:4}
+    table.tbl td:nth-child(7){order:5}
+    table.tbl td:nth-child(5){order:6;grid-column:1/-1}
+    table.tbl td:nth-child(6){order:7;grid-column:1/-1}
+    table.tbl td:nth-child(8){order:8;grid-column:1/-1}
+    table.tbl td:nth-child(9){order:9;grid-column:1/-1;text-align:right}
+    table.tbl td.num{text-align:left}
+    table.tbl td.num::before{content:attr(data-label)}
+    table.tbl tfoot{display:block;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+    table.tbl tfoot tr{border:0;padding:0;margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+    table.tbl tfoot td{margin:0}
+    table.tbl tfoot td::before{content:none}
+    table.sheet,table.sheet tbody,table.sheet tr,table.sheet td{display:block;width:100%}
+    table.sheet thead{display:none}
+    table.sheet tr{border:1px solid var(--line);border-radius:9px;padding:10px 11px;margin-bottom:9px}
+    table.sheet td{padding:0;border:0;margin-bottom:6px}
+    table.sheet td:last-child{margin-bottom:0}
+    table.sheet td::before{content:attr(data-label);font-size:11px;color:var(--ink3);display:inline-block;min-width:52px}
+    table.sheet td.spec,table.sheet td.cnt{font-size:14px;white-space:normal}
+    table.sheet td.spec::before,table.sheet td.cnt::before{font-family:inherit;font-weight:400}
+    .day{flex:0 0 96px}
+    .adv li{flex-direction:column;gap:8px}
+    .adv li .btn{align-self:flex-start}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>配一套自己发的电</h1>
+    <p class="tagline">把「要带哪些电器、每天各用多久」变成一张能照着买的配置单：组件买多大、电池买多大、控制器和逆变器要什么规格，阴雨天能撑几天。</p>
+    <p class="sub">全部在你这台设备上算：不联网、不查任何地区的日照数据、不查产品参数、不推荐品牌。</p>
+  </header>
+
+  <!-- 结论带 -->
+  <section class="concl" aria-label="结论">
+    <p class="lead" id="cLead">正在算…</p>
+    <div class="quad">
+      <div class="q p"><div class="k">组件</div><div class="v" id="cPanel">—</div><div class="d" id="cPanelD"></div></div>
+      <div class="q b"><div class="k">电池</div><div class="v" id="cBatt">—</div><div class="d" id="cBattD"></div></div>
+      <div class="q c"><div class="k">控制器</div><div class="v" id="cCtrl">—</div><div class="d" id="cCtrlD"></div></div>
+      <div class="q i"><div class="k">逆变器</div><div class="v" id="cInv">—</div><div class="d" id="cInvD"></div></div>
+    </div>
+    <div class="foot">
+      <span id="cDay">日耗电 —</span>
+      <span id="cGen">晴天日发电 —</span>
+      <span id="cRain">阴雨 —</span>
+      <span id="cYear">年发电 —</span>
+    </div>
+  </section>
+
+  <!-- 报错 -->
+  <div class="errbar" id="errbar" role="alert">
+    <h2 id="errTitle">有 <span id="errCount">0</span> 处填得不对，先把它们改掉</h2>
+    <ul id="errList"></ul>
+    <p class="more" id="errMore"></p>
+  </div>
+
+  <!-- ① 负载流水账 -->
+  <section class="blk" aria-label="负载清单">
+    <div class="bh">
+      <span class="no">①</span><h2>要带什么</h2>
+      <span class="tail" id="loadCount">0 行</span>
+    </div>
+    <p class="bnote">一行一件电器。功率看铭牌，每天用多久按你自己的用法填；「交流」是接逆变器的（手机充电器、电饭煲这类），「直流」是直接接电池的。</p>
+    <div class="tblwrap">
+      <table class="tbl" id="loadTbl">
+        <thead><tr>
+          <th class="l" style="width:19%">名称</th>
+          <th style="width:11%">功率 W</th>
+          <th style="width:11%">每天 h</th>
+          <th style="width:8%">数量</th>
+          <th class="l" style="width:13%">供电</th>
+          <th style="width:8%">同时开</th>
+          <th style="width:11%">启动倍率</th>
+          <th style="width:12%">一天吃多少</th>
+          <th style="width:7%"></th>
+        </tr></thead>
+        <tbody id="loadBody"></tbody>
+        <tfoot><tr>
+          <td class="lbl" colspan="7">日耗电合计（电池侧，交流已折算）</td>
+          <td class="val" id="loadTotal">—</td>
+          <td></td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <div class="rowact">
+      <button class="btn" id="addLoad" type="button">＋ 加一行</button>
+      <button class="btn" id="resetBtn" type="button">恢复默认场景</button>
+      <select id="presetSel" style="width:auto;min-width:210px;font-family:inherit;text-align:left" aria-label="快速试一个场景">
+        <option value="">快速试一个场景…</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- ② 系统参数 -->
+  <section class="blk" aria-label="系统参数">
+    <div class="bh"><span class="no">②</span><h2>在哪用、怎么用</h2><span class="tail" id="sysTail"></span></div>
+    <p class="bnote">这一组不是负载、也不是结论，是「你那儿的情况」：日照多少、允许多深放电、阴雨天要撑几天、你打算买多大一块的板。</p>
+    <div class="grid" id="sysGrid"></div>
+  </section>
+
+  <!-- ③ 配置单 -->
+  <section class="blk" aria-label="配置单">
+    <div class="bh"><span class="no">③</span><h2>出配置单</h2><span class="tail" id="sheetTail"></span></div>
+    <p class="bnote">这张单子可以直接照着买。「怎么来的」那一列写的就是这几个数是怎么算出来的。</p>
+    <table class="sheet" id="sheetTbl">
+      <thead><tr><th style="width:15%">部件</th><th style="width:22%">规格</th><th style="width:14%">数量</th><th>怎么来的</th></tr></thead>
+      <tbody id="sheetBody"></tbody>
+    </table>
+  </section>
+
+  <!-- 阴雨天时间线 -->
+  <section class="blk" aria-label="阴雨天那几天">
+    <div class="bh"><span class="no">④</span><h2>阴雨天那几天</h2><span class="tail" id="rainTail"></span></div>
+    <p class="bnote">按「阴雨天每天只发晴天的 <span id="rainPct">20%</span>」逐日推：每天照旧用掉一天的电，看电池余额怎么走。</p>
+    <div class="rain" id="rainBox"></div>
+    <p class="rv" id="rainVerdict"></p>
+  </section>
+
+  <!-- 反推 -->
+  <section class="blk" aria-label="手上已有的东西">
+    <div class="bh"><span class="no">⑤</span><h2>手上已经有东西？</h2><span class="tail">反着算</span></div>
+    <p class="bnote">已经买了一块板或一块电池的话，填在这儿：它不看上面的结论，只回答「这些东西能带得动多少」。两样都留着 0 就是不填。</p>
+    <div class="havegrid" id="haveGrid"></div>
+    <div class="verdict" id="haveOut"><div class="vt">还没填</div><div class="vd">填上已有设备的规格，这里会给出覆盖率、能撑几天、短板在哪。</div></div>
+  </section>
+
+  <!-- 建议 -->
+  <section class="blk" aria-label="下一步">
+    <div class="bh"><span class="no">⑥</span><h2>下一步可以怎么改</h2><span class="tail">点一下就改输入并重算</span></div>
+    <ul class="adv" id="advList"></ul>
+  </section>
+
+  <!-- 边界 -->
+  <section class="blk" aria-label="边界">
+    <div class="bh"><span class="no">⑦</span><h2>这个工具不做什么</h2></div>
+    <ul class="bound">
+      <li><b>不做电气安全设计</b>：不算线径、断路器、熔断器、接地、防雷、绝缘和压降，也不判定任何接线方案安不安全。真要动手请找持证的人做现场勘测。</li>
+      <li><b>不做组串电压匹配与 MPPT 工作点</b>：那要组件的 Vmp/Voc/Imp 和控制器的工作窗口，本页不查产品参数。</li>
+      <li><b>不查日照数据</b>：峰值日照小时数由你填。本页给的是「你填多少就按多少算」，不代表任何真实地点的实测辐照。</li>
+      <li><b>不预测真实发电量</b>：逐日天气、季节变化、积雪和遮挡都不建模；这里用的是日均线性口径。</li>
+      <li><b>不处理并网、余电上网、峰谷电价</b>，也不处理市电/发电机/车充这类多路充电。</li>
+      <li><b>不做电池寿命与衰减预测</b>（那是另一个题目），也不推荐品牌、不给购买链接、不查价格。</li>
+      <li><b>判定分档与余量系数都是显示层面的设计选择</b>，不是标准条款；本页不引用也不替代任何标准。</li>
+    </ul>
+  </section>
+
+  <!-- 导出 -->
+  <section class="blk" aria-label="导出">
+    <div class="bh"><span class="no">⑧</span><h2>把它带走</h2><span class="tail" id="saveState">输入存在本机</span></div>
+    <div class="exp">
+      <button class="btn pri" id="expPng" type="button">导出结果卡 PNG</button>
+      <button class="btn" id="expCsv" type="button">导出 CSV</button>
+      <button class="btn" id="expMd" type="button">导出 Markdown</button>
+      <button class="btn" id="expJson" type="button">导出 JSON 备份</button>
+    </div>
+    <p class="hint" style="margin-top:9px">结果卡是 1080×1350 的 PNG；CSV 是给表格软件用的；Markdown 可以直接粘进笔记；JSON 是完整备份，换台设备也能接着改。</p>
+  </section>
+
+  <footer class="ft">
+    <p>页面上的默认场景是<b>虚构示例</b>，不是实测数据，也不代表任何真实用户的使用分布。</p>
+    <p>能量口径统一在电池侧：交流负载的取电量已经除以逆变器效率；系统综合效率不含逆变器损失（逆变器单独算），这样不会把同一份损失扣两遍。</p>
+    <p>这一轮<b>没有取得可引用的一手来源</b>，所以页面只写「常用工作区间」和「默认值」，不标任何机构名、不写标准号。所有数字都是按你填的输入算出来的估算值。</p>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>/* 配一套自己发的电 · 纯计算内核（core.js）
+ * 口径全部来自 ../需求与调研.md §2，任何改动都要同步那份文字。
+ * 这个文件不碰 DOM，可以在 node 里直接 require 做测试。
+ */
+(function (global) {
+  'use strict';
+
+  /* ══════════════════ 1. 规格表（唯一的范围真相） ══════════════════ */
+  var SPEC = {
+    version: '1.0.0',
+    title: '配一套自己发的电',
+    sys: [
+      { key: 'psh', label: '峰值日照小时', unit: 'h/天', min: 0, minIncl: false, max: 12, maxIncl: true, dp: 2 },
+      { key: 'etaSys', label: '系统综合效率', unit: '', min: 0, minIncl: false, max: 1, maxIncl: true, dp: 2 },
+      { key: 'etaInv', label: '逆变器效率', unit: '', min: 0, minIncl: false, max: 1, maxIncl: true, dp: 2 },
+      { key: 'vBat', label: '电池标称电压', unit: 'V', min: 0, minIncl: false, max: 1000, maxIncl: true, dp: 2 },
+      { key: 'dod', label: '放电深度', unit: '', min: 0, minIncl: false, max: 1, maxIncl: true, dp: 2 },
+      { key: 'days', label: '阴雨自持天数', unit: '天', min: 0, minIncl: true, max: 30, maxIncl: true, dp: 1 },
+      { key: 'panelW', label: '单块组件', unit: 'W', min: 0, minIncl: false, max: 5000, maxIncl: true, dp: 0 },
+      { key: 'battUnitAh', label: '单块电池', unit: 'Ah', min: 0, minIncl: false, max: 5000, maxIncl: true, dp: 0 },
+      { key: 'reserve', label: '控制器电流余量', unit: '', min: 0, minIncl: true, max: 2, maxIncl: true, dp: 2 },
+      { key: 'invMargin', label: '逆变器功率余量', unit: '倍', min: 1, minIncl: true, max: 3, maxIncl: true, dp: 2 },
+      { key: 'rainFactor', label: '阴雨天日照系数', unit: '', min: 0, minIncl: true, max: 1, maxIncl: true, dp: 2 }
+    ],
+    load: [
+      { key: 'w', label: '功率', unit: 'W', min: 0, minIncl: false, max: 20000, maxIncl: true, dp: 1 },
+      { key: 'hours', label: '每天用', unit: 'h', min: 0, minIncl: false, max: 24, maxIncl: true, dp: 2 },
+      { key: 'qty', label: '数量', unit: '个', min: 1, minIncl: true, max: 50, maxIncl: true, dp: 0, integer: true },
+      { key: 'surge', label: '启动倍率', unit: '倍', min: 1, minIncl: true, max: 8, maxIncl: true, dp: 2 }
+    ],
+    have: [
+      { key: 'panelW', label: '已有组件', unit: 'W', min: 0, minIncl: true, max: 100000, maxIncl: true, dp: 0 },
+      { key: 'battAh', label: '已有电池', unit: 'Ah', min: 0, minIncl: true, max: 100000, maxIncl: true, dp: 0 }
+    ],
+    maxLoads: 40
+  };
+  var SYS_SPEC = {}, LOAD_SPEC = {}, HAVE_SPEC = {};
+  SPEC.sys.forEach(function (s) { SYS_SPEC[s.key] = s; });
+  SPEC.load.forEach(function (s) { LOAD_SPEC[s.key] = s; });
+  SPEC.have.forEach(function (s) { HAVE_SPEC[s.key] = s; });
+  var SYS_ORDER = SPEC.sys.map(function (s) { return s.key; });
+  var LOAD_ORDER = SPEC.load.map(function (s) { return s.key; });
+
+  /* ══════════════════ 2. 数值工具 ══════════════════ */
+  /* 十进制文本；不接受科学计数法/十六进制/千分位逗号 —— 宁可报「不是数字」，也不静默吞掉 */
+  var NUM_RE = /^[+-]?(\d+(\.\d*)?|\.\d+)$/;
+
+  function parseField(raw, spec) {
+    var t = (raw === null || raw === undefined) ? '' : String(raw).trim();
+    if (t === '') return { value: null, code: 'empty', message: spec.label + '还没填' };
+    if (!NUM_RE.test(t)) return { value: null, code: 'not-number', message: spec.label + '不是数字：「' + t + '」' };
+    var v = Number(t);
+    if (!isFinite(v)) return { value: null, code: 'not-number', message: spec.label + '不是有限的数字：「' + t + '」' };
+    if (spec.integer && Math.floor(v) !== v) {
+      return { value: null, code: 'not-integer', message: spec.label + '要填整数：「' + t + '」' };
+    }
+    if (v < spec.min || (!spec.minIncl && v === spec.min)) {
+      return { value: null, code: 'too-small', message: spec.label + '要' + (spec.minIncl ? '不小于' : '大于') + ' ' + spec.min + '（现在是 ' + t + '）' };
+    }
+    if (v > spec.max || (!spec.maxIncl && v === spec.max)) {
+      return { value: null, code: 'too-large', message: spec.label + '要' + (spec.maxIncl ? '不大于' : '小于') + ' ' + spec.max + '（现在是 ' + t + '）' };
+    }
+    return { value: v, code: null, message: '' };
+  }
+
+  function roundHalfAway(v) { return v < 0 ? -Math.round(-v) : Math.round(v); }
+  function roundDp(x, dp) {
+    if (typeof x !== 'number' || !isFinite(x)) return x;
+    var f = Math.pow(10, dp);
+    return roundHalfAway(x * f) / f;
+  }
+  /* 向上取整带容差：658.9999999999999 该是 659 而不是 660，但 657.2/200=3.286 必须是 4 */
+  function ceilSafe(x) {
+    if (!isFinite(x)) return x;
+    var r = Math.round(x);
+    if (Math.abs(x - r) <= 1e-9 * Math.max(1, Math.abs(x))) return r;
+    return Math.ceil(x);
+  }
+  function fmt(x, dp) {
+    if (x === null || x === undefined || typeof x !== 'number' || !isFinite(x)) return '—';
+    var d = (dp === undefined) ? 1 : dp;
+    return roundDp(x, d).toFixed(d);
+  }
+  function fmtInt(x) { return fmt(x, 0); }
+  /* 天数：整数就不带小数（「2 天」而不是「2.0 天」），小数保留 1 位（「2.5 天」） */
+  function fmtDays(d) {
+    if (typeof d !== 'number' || !isFinite(d)) return '—';
+    return (Math.abs(d - Math.round(d)) < 1e-9) ? String(Math.round(d)) : fmt(d, 1);
+  }
+  /* 电压：整数就不带小数（「12 V」而不是「12.00 V」） */
+  function fmtV(x) {
+    if (typeof x !== 'number' || !isFinite(x)) return '—';
+    return (Math.abs(x - Math.round(x)) < 1e-9) ? String(Math.round(x)) : fmt(x, 2);
+  }
+  function fmtPct(x, dp) { return (x === null ? '—' : fmt(x * 100, dp === undefined ? 1 : dp) + '%'); }
+  function isNum(x) { return typeof x === 'number' && isFinite(x); }
+  function ratio(a, b) { return (isNum(a) && isNum(b) && b !== 0) ? a / b : null; }
+
+  /* ══════════════════ 3. 默认状态 / 预置场景 ══════════════════ */
+  function load(name, w, hours, qty, ac, simultaneous, surge) {
+    return {
+      name: name, w: String(w), hours: String(hours), qty: String(qty),
+      ac: !!ac, simultaneous: simultaneous === undefined ? true : !!simultaneous,
+      surge: String(surge === undefined ? 1 : surge)
+    };
+  }
+  var SYS_DEFAULT = {
+    psh: '4.0', etaSys: '0.72', etaInv: '0.90', vBat: '12', dod: '0.80', days: '2',
+    panelW: '200', battUnitAh: '100', reserve: '0.25', invMargin: '1.2', rainFactor: '0.20'
+  };
+  function sysOf(over) {
+    var o = {}; SYS_ORDER.forEach(function (k) { o[k] = SYS_DEFAULT[k]; });
+    Object.keys(over || {}).forEach(function (k) { o[k] = String(over[k]); });
+    return o;
+  }
+
+  var PRESETS = [
+    {
+      id: 'rv', name: '房车 / 床车（12 V 默认样例）',
+      note: '虚构示例：一台车载冰箱加灯、风扇、笔记本和两个短时大功率交流电器。',
+      state: {
+        loads: [
+          load('车载冰箱', 45, 24, 1, false, true, 1),
+          load('LED 灯', 8, 5, 3, false, true, 1),
+          load('排风扇', 12, 8, 1, false, true, 1),
+          load('笔记本（DC-DC）', 45, 4, 1, false, true, 1),
+          load('手机充电', 65, 3, 1, true, true, 1),
+          load('电饭煲', 300, 0.5, 1, true, false, 1),
+          load('水泵', 60, 0.5, 1, true, true, 3)
+        ],
+        sys: sysOf({})
+      }
+    },
+    {
+      id: 'camera', name: '院子里的摄像头 + 路由（无人值守）',
+      note: '虚构示例：两个小功率负载 24 小时不断电，自持天数拉到 3 天。',
+      state: {
+        loads: [
+          load('摄像头', 5, 24, 1, false, true, 1),
+          load('4G 路由', 8, 24, 1, false, true, 1)
+        ],
+        sys: sysOf({ psh: '3.5', days: '3', panelW: '100', battUnitAh: '50', rainFactor: '0.15' })
+      }
+    },
+    {
+      id: 'cabin', name: '离网小屋（24 V，带冰箱和电视）',
+      note: '虚构示例：24 V 系统，负载更大、同时用电更多，用来看电压换档的效果。',
+      state: {
+        loads: [
+          load('直流冰箱', 60, 10, 1, false, true, 2),
+          load('LED 灯', 9, 6, 6, false, true, 1),
+          load('电视盒子', 25, 4, 1, true, true, 1),
+          load('小电视', 90, 4, 1, true, true, 1),
+          load('水泵', 400, 0.3, 1, true, true, 3)
+        ],
+        sys: sysOf({ vBat: '24', dod: '0.8', days: '2', panelW: '400', battUnitAh: '200', psh: '4.5' })
+      }
+    },
+    {
+      id: 'camp', name: '周末露营（小负载、只要够用）',
+      note: '虚构示例：手机、灯、小音箱，看看最小配置要多少。',
+      state: {
+        loads: [
+          load('手机充电', 20, 2, 2, true, true, 1),
+          load('露营灯', 5, 6, 2, false, true, 1),
+          load('小音箱', 15, 3, 1, true, true, 1)
+        ],
+        sys: sysOf({ psh: '3.0', days: '1', panelW: '100', battUnitAh: '50' })
+      }
+    },
+    {
+      id: 'have', name: '我手上已经有一块 100 W 板和 100 Ah 电池',
+      note: '虚构示例：只改「手上已有」两个数，看反推怎么回答「这块板到底能带什么」。',
+      state: {
+        loads: [
+          load('车载冰箱', 45, 24, 1, false, true, 1),
+          load('LED 灯', 8, 5, 2, false, true, 1),
+          load('手机充电', 20, 2, 2, true, true, 1)
+        ],
+        sys: sysOf({}),
+        have: { panelW: '100', battAh: '100' }
+      }
+    }
+  ];
+
+  function defaultState(presetId) {
+    var p = PRESETS[0];
+    if (presetId) {
+      for (var i = 0; i < PRESETS.length; i++) if (PRESETS[i].id === presetId) p = PRESETS[i];
+    }
+    return cloneState(p.state);
+  }
+  function cloneState(s) {
+    return {
+      loads: (s.loads || []).map(function (l) {
+        return {
+          name: l.name || '', w: String(l.w), hours: String(l.hours), qty: String(l.qty),
+          ac: !!l.ac, simultaneous: l.simultaneous === undefined ? true : !!l.simultaneous, surge: String(l.surge)
+        };
+      }),
+      sys: sysOf(s.sys || {}),
+      have: { panelW: String((s.have || {}).panelW === undefined ? '0' : s.have.panelW), battAh: String((s.have || {}).battAh === undefined ? '0' : s.have.battAh) },
+      presetId: s.presetId || 'rv'
+    };
+  }
+
+  /* ══════════════════ 4. 计算 ══════════════════ */
+  function labelOf(l, i) { return (l.name && String(l.name).trim()) || ('负载 ' + (i + 1)); }
+
+  function compute(state) {
+    var errors = [];
+    var warnings = [];
+    var loads = (state && state.loads) || [];
+    var sysRaw = (state && state.sys) || {};
+    var haveRaw = (state && state.have) || {};
+
+    if (loads.length === 0) {
+      errors.push({ field: 'loads', code: 'empty-list', message: '负载清单是空的，至少加一行' });
+    }
+    if (loads.length > SPEC.maxLoads) {
+      errors.push({ field: 'loads', code: 'too-many', message: '最多 ' + SPEC.maxLoads + ' 行负载（现在 ' + loads.length + ' 行）' });
+    }
+
+    /* ── 逐行解析与行内取电 ── */
+    var rows = loads.map(function (l, i) {
+      var row = {
+        index: i, label: labelOf(l, i), ok: true, errors: [],
+        ac: !!l.ac, simultaneous: l.simultaneous === undefined ? true : !!l.simultaneous,
+        values: {}, E_i: null, deficit_wh: null,
+        P_cont_contrib: 0, P_peak_contrib: 0
+      };
+      LOAD_ORDER.forEach(function (k) {
+        var r = parseField(l[k], LOAD_SPEC[k]);
+        row.values[k] = r.value;
+        if (r.code) {
+          row.ok = false;
+          row.errors.push({ field: 'loads[' + i + '].' + k, code: r.code, message: r.message, raw: String(l[k] === undefined ? '' : l[k]) });
+        }
+      });
+      if (row.ok) {
+        var p = row.values.w, h = row.values.hours, q = row.values.qty, g = row.values.surge;
+        row.raw_wh = p * h * q;
+        row.E_i = row.ac ? row.raw_wh : row.raw_wh; /* 交流行还要除以逆变器效率，下面统一算 */
+        row.P_cont_contrib = (row.ac && row.simultaneous) ? p * q : 0;
+        row.P_peak_contrib = (row.ac && row.simultaneous) ? p * q * g : 0;
+      }
+      return row;
+    });
+    rows.forEach(function (r) { if (!r.ok) errors = errors.concat(r.errors); });
+
+    /* ── 系统参数解析 ── */
+    var sysV = {};
+    SYS_ORDER.forEach(function (k) {
+      var r = parseField(sysRaw[k], SYS_SPEC[k]);
+      sysV[k] = r.value;
+      if (r.code) {
+        errors.push({ field: 'sys.' + k, code: r.code, message: r.message, raw: String(sysRaw[k] === undefined ? '' : sysRaw[k]) });
+      }
+    });
+
+    /* ── 手上已有（永远不阻塞计算；超范围只按越界处理，不产生 ok=false） ── */
+    var haveV = {}, haveProblems = [];
+    Object.keys(HAVE_SPEC).forEach(function (k) {
+      var r = parseField(haveRaw[k], HAVE_SPEC[k]);
+      if (r.code) { haveProblems.push({ field: 'have.' + k, code: r.code, message: r.message, raw: String(haveRaw[k] === undefined ? '' : haveRaw[k]) }); haveV[k] = 0; }
+      else haveV[k] = r.value;
+    });
+    haveProblems.forEach(function (p) { warnings.push(p); });
+
+    var ok = errors.length === 0;
+
+    /* ── ok=false：所有推导量一律 null（界面必须能区分「0」和「算不出来」） ── */
+    if (!ok) {
+      rows.forEach(function (r) { r.E_i = null; });
+      return {
+        ok: false, errors: errors, warnings: warnings, loadRows: rows,
+        totals: null, panel: null, battery: null, controller: null, inverter: null,
+        rain: null, year: null, have: null, suggestions: [], derivations: {}
+      };
+    }
+
+    var psh = sysV.psh, etaSys = sysV.etaSys, etaInv = sysV.etaInv, vBat = sysV.vBat,
+      dod = sysV.dod, days = sysV.days, panelW = sysV.panelW, battUnitAh = sysV.battUnitAh,
+      reserve = sysV.reserve, invMargin = sysV.invMargin, rainFactor = sysV.rainFactor;
+
+    /* ── 能量收支 ── */
+    var E_dc = 0, E_ac = 0, E_day = 0;
+    rows.forEach(function (r) {
+      var p = r.values.w, h = r.values.hours, q = r.values.qty;
+      var rawWh = p * h * q;
+      r.raw_wh = rawWh;
+      if (r.ac) { E_ac += rawWh; r.E_i = rawWh / etaInv; }
+      else { E_dc += rawWh; r.E_i = rawWh; }
+      E_day += r.E_i;
+    });
+    var E_invLoss = E_ac / etaInv - E_ac;
+
+    var Wp_need = E_day / (psh * etaSys);
+    var n_p = ceilSafe(Wp_need / panelW);
+    var Wp_inst = n_p * panelW;
+    var E_gen = Wp_inst * psh * etaSys;
+    var surplus = E_gen - E_day;
+
+    var E_use = E_day * days;
+    var E_nom = E_use / dod;
+    var Ah_need = E_nom / vBat;
+    var n_b = ceilSafe(Ah_need / battUnitAh);
+    var Ah_inst = n_b * battUnitAh;
+
+    var I_ctrl = Wp_inst / vBat * (1 + reserve);
+
+    var P_cont = 0, P_peak = 0;
+    rows.forEach(function (r) { P_cont += r.P_cont_contrib; P_peak += r.P_peak_contrib; });
+    var P_rec = P_cont * invMargin;
+
+    var E_year_kwh = Wp_inst * psh * 365 * etaSys / 1000;
+
+    /* ── 阴雨期逐日递推 ──
+       两个不同的信号，不要混成一个（本轮自查找出来的）：只报「见底」会把「正好用完」说成「没见底」：
+         firstEmptyDay     = 最小的 d，使 q_{d−1} + net_d < 0 —— 这天负载被饿着了（真的不够）
+         firstExhaustedDay = 最小的 d，使这天结束时 q_d ≤ 0 —— 电池用光了（含「正好用完」）
+       小数天（例如 2.5 天）按比例分摊到最后一个半天：那天发电和用电都乘同一个比例，
+       这样「总用电量 = E_day × days = E_use」恒成立，不会出现「容量按 2.5 天配、循环却跑 3 个整天」的口径错位。
+       装机向上取整保证 E_gen ≥ E_day，因此 surplus 不会小于 0（测试里钉着这条推论）。 */
+    var G_rain = Wp_inst * psh * rainFactor * etaSys;
+    var rainRows = [];
+    var q = E_use, firstEmptyDay = null, firstExhaustedDay = null, spill = 0;
+    var fullDays = Math.floor(days + 1e-9);
+    var frac = days - fullDays;
+    var nDays = fullDays + (frac > 1e-9 ? 1 : 0);
+    /* 余额比较必须带容差：E_use 与「逐日用电之和」在数学上相等，但浮点下会差 1e-13，
+       不加容差就会出现「2.5 天里最后半个半天被判成不够用」这种纯噪声导致的结论翻转
+       （对拍方也独立提了同一件事）。容差口径与 ceilSafe 一致：相对 1e-9。 */
+    var tol = 1e-9 * Math.max(1, E_use);
+    for (var d = 1; d <= nDays; d++) {
+      var share = (d <= fullDays) ? 1 : frac;
+      var drawD = E_day * share;
+      var genD = G_rain * share;
+      var net = genD - drawD;
+      var raw = q + net;
+      var qEnd;
+      if (raw < -tol) { if (firstEmptyDay === null) firstEmptyDay = d; qEnd = 0; }
+      else if (raw > E_use + tol) { spill += raw - E_use; qEnd = E_use; }
+      else qEnd = Math.min(Math.max(raw, 0), E_use);
+      if (qEnd <= 0 && firstExhaustedDay === null) firstExhaustedDay = d;
+      rainRows.push({ d: d, share: share, gen: genD, draw: drawD, net: net, q: qEnd });
+      q = qEnd;
+    }
+    var refillDays = (surplus > 0) ? (E_use - q) / surplus : null;
+
+    /* ── 反推：手上已有的东西能带什么 ── */
+    var hp = haveV.panelW, hb = haveV.battAh;
+    var E_sup = hp * psh * etaSys;
+    var coverage = ratio(E_sup, E_day);
+    var d_have = ratio(hb * vBat * dod, E_day);
+    var haveAny = (hp > 0) || (hb > 0);
+    var haveObj = {
+      panelW: hp, battAh: hb, E_sup: hp > 0 ? E_sup : null,
+      coverage: hp > 0 ? coverage : null, d_have: hb > 0 ? d_have : null,
+      usable_wh: hb > 0 ? hb * vBat * dod : null,
+      verdict: '未填'
+    };
+    if (haveAny) {
+      var panelOk = hp > 0 ? coverage >= 1 : null;
+      var battOk = hb > 0 ? d_have >= days : null;
+      if (panelOk === false) haveObj.verdict = '组件不够';
+      else if (battOk === false) haveObj.verdict = '电池不够';
+      else haveObj.verdict = '都够';
+    }
+
+    /* ── 可解释：每条推导量的算式（带用户自己的数） ── */
+    var derivations = {
+      E_day: '日耗电 = Σ 每行 功率 × 每天小时 × 数量（交流行再 ÷ 逆变器效率 ' + fmt(etaInv, 2) + '）= ' + fmt(E_dc, 1) + ' + ' + fmt(E_ac, 1) + ' ÷ ' + fmt(etaInv, 2) + ' = ' + fmt(E_day, 1) + ' Wh',
+      E_invLoss: '逆变损失 = 交流侧用电 × (1 ÷ 逆变器效率 − 1) = ' + fmt(E_ac, 1) + ' × (1 ÷ ' + fmt(etaInv, 2) + ' − 1) = ' + fmt(E_invLoss, 1) + ' Wh',
+      Wp_need: '组件需求 = 日耗电 ÷ (峰值日照小时 × 系统综合效率) = ' + fmt(E_day, 1) + ' ÷ (' + fmt(psh, 2) + ' × ' + fmt(etaSys, 2) + ') = ' + fmt(Wp_need, 1) + ' W',
+      n_p: '组件块数 = 向上取整(' + fmt(Wp_need, 1) + ' ÷ ' + fmt(panelW, 0) + ') = ' + n_p + ' 块，装机 ' + fmt(Wp_inst, 0) + ' W',
+      E_gen: '晴天日发电 = 装机 × 峰值日照小时 × 系统综合效率 = ' + fmt(Wp_inst, 0) + ' × ' + fmt(psh, 2) + ' × ' + fmt(etaSys, 2) + ' = ' + fmt(E_gen, 1) + ' Wh',
+      E_use: '电池可用电量 = 日耗电 × 自持天数 = ' + fmt(E_day, 1) + ' × ' + fmt(days, 1) + ' = ' + fmt(E_use, 1) + ' Wh',
+      E_nom: '电池标称电量 = 可用电量 ÷ 放电深度 = ' + fmt(E_use, 1) + ' ÷ ' + fmt(dod, 2) + ' = ' + fmt(E_nom, 1) + ' Wh',
+      Ah_need: '电池容量 = 标称电量 ÷ 电压 = ' + fmt(E_nom, 1) + ' ÷ ' + fmtV(vBat) + ' = ' + fmt(Ah_need, 1) + ' Ah，凑成 ' + n_b + ' 块 × ' + fmt(battUnitAh, 0) + ' Ah = ' + fmt(Ah_inst, 0) + ' Ah',
+      I_ctrl: '控制器电流 = 装机 ÷ 电压 × (1 + 余量) = ' + fmt(Wp_inst, 0) + ' ÷ ' + fmtV(vBat) + ' × (1 + ' + fmt(reserve, 2) + ') = ' + fmt(I_ctrl, 1) + ' A',
+      P_rec: '逆变器连续功率 = Σ 要同时开的交流负载 = ' + fmt(P_cont, 0) + ' W，乘余量 ' + fmt(invMargin, 2) + ' 倍 = ' + fmt(P_rec, 0) + ' W；峰值 = Σ 功率 × 数量 × 启动倍率 = ' + fmt(P_peak, 0) + ' W'
+    };
+
+    /* ── 建议（每条都能真的作用到输入） ── */
+    var suggestions = buildSuggestions({
+      state: state, rows: rows, sysV: sysV, E_day: E_day, E_dc: E_dc, E_ac: E_ac,
+      Wp_need: Wp_need, n_p: n_p, Wp_inst: Wp_inst, I_ctrl: I_ctrl, P_cont: P_cont, P_peak: P_peak,
+      Ah_need: Ah_need, n_b: n_b, have: haveObj, days: days, vBat: vBat, panelW: panelW,
+      battUnitAh: battUnitAh, psh: psh, etaSys: etaSys, etaInv: etaInv, dod: dod, surplus: surplus
+    });
+
+    return {
+      ok: true, errors: [], warnings: warnings, loadRows: rows,
+      input: {
+        psh: psh, etaSys: etaSys, etaInv: etaInv, vBat: vBat, dod: dod, days: days,
+        panelW: panelW, battUnitAh: battUnitAh, reserve: reserve, invMargin: invMargin, rainFactor: rainFactor
+      },
+      totals: {
+        E_day: E_day, E_dc: E_dc, E_ac: E_ac, E_invLoss: E_invLoss,
+        raw_ac: E_ac, dc_share: ratio(E_dc, E_day), ac_share: ratio(E_ac / etaInv, E_day)
+      },
+      panel: {
+        need: Wp_need, unit: panelW, count: n_p, installed: Wp_inst,
+        genDay: E_gen, surplus: surplus, ceilGap: Wp_inst - Wp_need,
+        coverRatio: ratio(E_gen, E_day)
+      },
+      battery: {
+        useWh: E_use, nomWh: E_nom, ahNeed: Ah_need, unit: battUnitAh,
+        count: n_b, installedAh: Ah_inst, installedWh: Ah_inst * vBat,
+        ceilGap: Ah_inst - Ah_need, usableWh: Ah_inst * vBat * dod
+      },
+      controller: { amps: I_ctrl, reserve: reserve, mppt: true, perPanel: panelW / vBat * (1 + reserve) },
+      inverter: { cont: P_cont, rec: P_rec, peak: P_peak, margin: invMargin },
+      rain: {
+        rows: rainRows, firstEmptyDay: firstEmptyDay, firstExhaustedDay: firstExhaustedDay,
+        refillDays: refillDays, spill: spill, factor: rainFactor, genPerDay: G_rain, days: days,
+        endQ: rainRows.length ? rainRows[rainRows.length - 1].q : E_use
+      },
+      year: { kwh: E_year_kwh },
+      have: haveObj,
+      suggestions: suggestions,
+      derivations: derivations
+    };
+  }
+
+  function buildSuggestions(ctx) {
+    var out = [];
+    var rows = ctx.rows, sysV = ctx.sysV;
+
+    /* 1) 自持天数 +1 */
+    if (ctx.days < 30) {
+      var addAh = ctx.E_day / sysV.vBat / sysV.dod;
+      out.push({
+        id: 'days+1', path: 'sys.days', kind: 'sys', value: String(ctx.days + 1),
+        title: '自持天数改成 ' + fmtDays(ctx.days + 1) + ' 天',
+        why: '阴雨天多备一天，电池要多 ' + fmt(addAh, 1) + ' Ah，现在配的是 ' + fmt(ctx.Ah_need, 1) + ' Ah。'
+      });
+    }
+    /* 2) 12 V → 24 V（控制器电流或逆变器功率吃紧时） */
+    if (ctx.vBat === 12 && (ctx.I_ctrl > 60 || ctx.P_cont > 1000)) {
+      out.push({
+        id: 'vbat24', path: 'sys.vBat', kind: 'sys', value: '24',
+        title: '把系统电压换成 24 V',
+        why: '同样的功率，24 V 下控制器电流从 ' + fmt(ctx.I_ctrl, 1) + ' A 降到 ' + fmt(ctx.Wp_inst / 24 * (1 + sysV.reserve), 1) + ' A，电池 Ah 数也减半（Wh 不变）。'
+      });
+    }
+    /* 3) 换更大的单块组件（块数能降下来才提） */
+    var unitCands = [100, 150, 200, 250, 300, 400, 450, 500, 550, 600, 700];
+    for (var u = 0; u < unitCands.length; u++) {
+      var cand = unitCands[u];
+      if (cand <= ctx.panelW) continue;
+      var cn = ceilSafe(ctx.Wp_need / cand);
+      if (cn < ctx.n_p) {
+        out.push({
+          id: 'panelUnit', path: 'sys.panelW', kind: 'sys', value: String(cand),
+          title: '单块组件换成 ' + cand + ' W',
+          why: '装机要到 ' + fmt(ctx.Wp_need, 1) + ' W：' + ctx.n_p + ' 块 × ' + fmt(ctx.panelW, 0) + ' W 是 ' + fmt(ctx.Wp_inst, 0) + ' W；换成 ' + cand + ' W 只要 ' + cn + ' 块 = ' + fmt(cn * cand, 0) + ' W。'
+        });
+        break;
+      }
+    }
+    /* 4) 把某个同时开的交流负载标成不同时开（降逆变器连续功率） */
+    var acSim = rows.filter(function (r) { return r.ok && r.ac && r.simultaneous && r.P_cont_contrib > 0; });
+    if (acSim.length >= 2) {
+      acSim.sort(function (a, b) { return b.P_cont_contrib - a.P_cont_contrib; });
+      var big = acSim[0];
+      var newCont = ctx.P_cont - big.P_cont_contrib;
+      out.push({
+        id: 'unsim', kind: 'load', loadIndex: big.index, field: 'simultaneous', value: false,
+        title: '把「' + big.label + '」标成不同时开',
+        why: '逆变器连续功率从 ' + fmt(ctx.P_cont, 0) + ' W 降到 ' + fmt(newCont, 0) + ' W（建议额定随之从 ' + fmt(ctx.P_cont * sysV.invMargin, 0) + ' W 降到 ' + fmt(newCont * sysV.invMargin, 0) + ' W）。'
+      });
+    }
+    /* 5) 把耗时较长的交流负载假设成直流（省掉逆变损失） */
+    var acLong = rows.filter(function (r) { return r.ok && r.ac && r.values.hours >= 2 && r.values.w <= 300; });
+    if (acLong.length) {
+      acLong.sort(function (a, b) { return b.raw_wh - a.raw_wh; });
+      var r5 = acLong[0];
+      var saveWh = r5.raw_wh / sysV.etaInv - r5.raw_wh;
+      out.push({
+        id: 'ac2dc', kind: 'load', loadIndex: r5.index, field: 'ac', value: false,
+        title: '假设「' + r5.label + '」能改直流供电',
+        why: '这行每天有 ' + fmt(saveWh, 1) + ' Wh 花在逆变损失上（' + fmt(r5.E_i, 1) + ' → ' + fmt(r5.raw_wh, 1) + ' Wh）。能不能改直流取决于设备本身，这里只是把差别算给你看。'
+      });
+    }
+    /* 6) 已有设备不够时的下一步 */
+    if (ctx.have.verdict === '组件不够') {
+      out.push({
+        id: 'havePanel', path: 'sys.panelW', kind: 'sys', value: String(Math.max(100, Math.ceil((ctx.E_day / (ctx.psh * ctx.etaSys)) / 10) * 10)),
+        title: '已有组件不够：把「单块组件」按需求填成 ' + Math.max(100, Math.ceil((ctx.E_day / (ctx.psh * ctx.etaSys)) / 10) * 10) + ' W',
+        why: '你手上是 ' + fmt(ctx.have.panelW, 0) + ' W，一天只能出 ' + fmt(ctx.have.E_sup, 1) + ' Wh，而负载要 ' + fmt(ctx.E_day, 1) + ' Wh。'
+      });
+    } else if (ctx.have.verdict === '电池不够') {
+      var needAh = ctx.E_day * ctx.days / sysV.dod / sysV.vBat;
+      out.push({
+        id: 'haveBatt', path: 'have.battAh', kind: 'have', value: String(Math.ceil(needAh / 10) * 10),
+        title: '已有电池不够：要撑 ' + fmtDays(ctx.days) + ' 天得有 ' + fmt(needAh, 1) + ' Ah',
+        why: '你手上是 ' + fmt(ctx.have.battAh, 0) + ' Ah，只够撑 ' + fmt(ctx.have.d_have, 2) + ' 天。'
+      });
+    } else if (ctx.have.verdict === '都够' && ctx.surplus > 0) {
+      out.push({
+        id: 'haveMore', kind: 'load', loadIndex: 0, field: 'hours', value: String(Number(rows[0].values.hours) + 1),
+        title: '手上这套够用：把「' + rows[0].label + '」每天多用 1 小时试试看',
+        why: '晴天发电 ' + fmt(ctx.Wp_inst * ctx.psh * ctx.etaSys, 1) + ' Wh 比用电多 ' + fmt(ctx.surplus, 1) + ' Wh，还有余量可以加负载。'
+      });
+    }
+    return out;
+  }
+
+  /* ══════════════════ 5. 导出（纯字符串，便于测试） ══════════════════ */
+  /* 阴雨期结论的唯一去处：页面、CSV、Markdown 都调它，避免三处各写一套说法 */
+  function rainVerdict(r) {
+    if (!r || !r.ok) return { code: 'na', text: '—', detail: '输入有误，没有结果。' };
+    var rain = r.rain;
+    if (rain.days === 0) return { code: 'none', text: '不用电池', detail: '自持天数填的是 0，没有阴雨期。' };
+    if (rain.firstEmptyDay !== null) {
+      return {
+        code: 'short', text: '第 ' + rain.firstEmptyDay + ' 天就不够用',
+        detail: '第 ' + rain.firstEmptyDay + ' 天结束时电量撑不住当天的用电，负载会被饿着。'
+      };
+    }
+    if (rain.firstExhaustedDay !== null) {
+      return {
+        code: 'exact', text: '第 ' + rain.firstExhaustedDay + ' 天正好用完',
+        detail: '撑满了 ' + fmtDays(rain.days) + ' 天，最后一天结束时电池正好放到 0，一点余量都没有。'
+      };
+    }
+    return {
+      code: 'ok', text: '撑过 ' + fmtDays(rain.days) + ' 天还剩 ' + fmt(rain.endQ, 1) + ' Wh',
+      detail: '阴雨期结束还剩 ' + fmtPct(ratio(rain.endQ, r.battery.useWh)) + ' 的可用电量。'
+    };
+  }
+  function csvCell(v) {
+    var s = (v === null || v === undefined) ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function toCSV(state, r, meta) {
+    var L = [];
+    L.push(['项目', '值', '单位', '说明'].map(csvCell).join(','));
+    var m = meta || {};
+    L.push(['作品', SPEC.title, '', ''].map(csvCell).join(','));
+    L.push(['导出时间', m.exportedAt || '', '', '本行为导出时刻'].map(csvCell).join(','));
+    if (!r.ok) {
+      L.push(['状态', '输入有误，没有结果', '', r.errors.map(function (e) { return e.message; }).join('；')].map(csvCell).join(','));
+      return L.join('\n') + '\n';
+    }
+    L.push(['日耗电', fmt(r.totals.E_day, 1), 'Wh', '母线侧：交流负载已除以逆变器效率'].map(csvCell).join(','));
+    L.push(['其中直流用电', fmt(r.totals.E_dc, 1), 'Wh', ''].map(csvCell).join(','));
+    L.push(['其中交流用电', fmt(r.totals.E_ac, 1), 'Wh', '交流侧原始值'].map(csvCell).join(','));
+    L.push(['其中逆变损失', fmt(r.totals.E_invLoss, 1), 'Wh', ''].map(csvCell).join(','));
+    L.push(['组件需求', fmt(r.panel.need, 1), 'W', '日耗电 ÷ (日照 × 系统效率)'].map(csvCell).join(','));
+    L.push(['组件块数', r.panel.count, '块', '单块 ' + fmt(r.panel.unit, 0) + ' W'].map(csvCell).join(','));
+    L.push(['组件装机', fmt(r.panel.installed, 0), 'W', ''].map(csvCell).join(','));
+    L.push(['晴天日发电', fmt(r.panel.genDay, 1), 'Wh', ''].map(csvCell).join(','));
+    L.push(['晴天日余量', fmt(r.panel.surplus, 1), 'Wh', '发电 − 用电'].map(csvCell).join(','));
+    L.push(['电池可用电量', fmt(r.battery.useWh, 1), 'Wh', '日耗电 × 自持天数'].map(csvCell).join(','));
+    L.push(['电池标称电量', fmt(r.battery.nomWh, 1), 'Wh', '可用 ÷ 放电深度'].map(csvCell).join(','));
+    L.push(['电池容量需求', fmt(r.battery.ahNeed, 1), 'Ah', ''].map(csvCell).join(','));
+    L.push(['电池块数', r.battery.count, '块', '单块 ' + fmt(r.battery.unit, 0) + ' Ah'].map(csvCell).join(','));
+    L.push(['电池装机', fmt(r.battery.installedAh, 0), 'Ah', '@ ' + fmtV(r.input.vBat) + ' V'].map(csvCell).join(','));
+    L.push(['控制器电流', fmt(r.controller.amps, 1), 'A', '装机 ÷ 电压 × (1 + 余量 ' + fmt(r.controller.reserve, 2) + ')'].map(csvCell).join(','));
+    L.push(['逆变器连续功率', fmt(r.inverter.rec, 0), 'W', '同时开的交流负载 ' + fmt(r.inverter.cont, 0) + ' W × ' + fmt(r.inverter.margin, 2)].map(csvCell).join(','));
+    L.push(['逆变器峰值需求', fmt(r.inverter.peak, 0), 'W', ''].map(csvCell).join(','));
+    var rv = rainVerdict(r);
+    L.push(['阴雨期', rv.text, '天', rv.detail + '共 ' + fmtDays(r.rain.days) + ' 天，阴雨天日照系数 ' + fmt(r.rain.factor, 2)].map(csvCell).join(','));
+    L.push(['阴雨期结束余量', fmt(r.rain.endQ, 1), 'Wh', '可用电量一共 ' + fmt(r.battery.useWh, 1) + ' Wh'].map(csvCell).join(','));
+    L.push(['阴雨期弃电', fmt(r.rain.spill, 1), 'Wh', '充满后存不下的部分'].map(csvCell).join(','));
+    L.push(['晴天回充天数', r.rain.refillDays === null ? '—' : fmt(r.rain.refillDays, 2), '天', '余量不为正时为 —'].map(csvCell).join(','));
+    L.push(['年发电量估算', fmt(r.year.kwh, 1), 'kWh', '假设全年每天都等于你填的日照'].map(csvCell).join(','));
+    if (r.have.verdict !== '未填') {
+      L.push(['已有设备判定', r.have.verdict, '', '组件 ' + fmt(r.have.panelW, 0) + ' W / 电池 ' + fmt(r.have.battAh, 0) + ' Ah'].map(csvCell).join(','));
+      if (isNum(r.have.coverage)) L.push(['已有组件覆盖率', fmtPct(r.have.coverage), '', '可供电量 ' + fmt(r.have.E_sup, 1) + ' Wh ÷ 日耗电 ' + fmt(r.totals.E_day, 1) + ' Wh'].map(csvCell).join(','));
+      if (isNum(r.have.d_have)) L.push(['已有电池自持', fmt(r.have.d_have, 2), '天', '可用 ' + fmt(r.have.usable_wh, 1) + ' Wh ÷ 日耗电'].map(csvCell).join(','));
+    }
+    L.push('', '');
+    L.push(['负载清单', '功率 W', '每天 h', '数量', '供电', '同时开', '启动倍率', '这行一天吃多少 Wh'].map(csvCell).join(','));
+    r.loadRows.forEach(function (x) {
+      L.push([x.label, fmt(x.values.w, 1), fmt(x.values.hours, 2), x.values.qty, x.ac ? '交流' : '直流',
+        x.simultaneous ? '是' : '否', fmt(x.values.surge, 2), fmt(x.E_i, 1)].map(csvCell).join(','));
+    });
+    return L.join('\n') + '\n';
+  }
+
+  function toMarkdown(state, r, meta) {
+    var L = [];
+    L.push('# ' + SPEC.title + ' · 配置单');
+    L.push('');
+    if (meta && meta.exportedAt) L.push('导出时间：' + meta.exportedAt);
+    L.push('');
+    if (!r.ok) {
+      L.push('**输入有误，没有结果。**');
+      r.errors.forEach(function (e) { L.push('- ' + e.message); });
+      return L.join('\n') + '\n';
+    }
+    L.push('## 结论');
+    L.push('');
+    L.push('| 部件 | 规格 | 说明 |');
+    L.push('|---|---|---|');
+    L.push('| 组件 | ≥ ' + fmt(r.panel.need, 1) + ' W | 照 ' + r.panel.count + ' 块 × ' + fmt(r.panel.unit, 0) + ' W 买，装机 ' + fmt(r.panel.installed, 0) + ' W |');
+    L.push('| 电池 | ≥ ' + fmt(r.battery.ahNeed, 1) + ' Ah @ ' + fmtV(r.input.vBat) + ' V | 照 ' + r.battery.count + ' 块 × ' + fmt(r.battery.unit, 0) + ' Ah 买，装机 ' + fmt(r.battery.installedAh, 0) + ' Ah |');
+    L.push('| 控制器 | ≥ ' + fmt(r.controller.amps, 1) + ' A | 装机 ÷ 电压，已含 ' + fmtPct(r.controller.reserve, 0) + ' 余量 |');
+    L.push('| 逆变器 | ≥ ' + fmt(r.inverter.rec, 0) + ' W 连续 | 峰值能力要 ≥ ' + fmt(r.inverter.peak, 0) + ' W |');
+    L.push('');
+    L.push('## 账');
+    L.push('');
+    L.push('| 项目 | 值 |');
+    L.push('|---|---|');
+    L.push('| 日耗电（母线侧） | ' + fmt(r.totals.E_day, 1) + ' Wh |');
+    L.push('| 　直流部分 | ' + fmt(r.totals.E_dc, 1) + ' Wh |');
+    L.push('| 　交流部分（含逆变损失 ' + fmt(r.totals.E_invLoss, 1) + ' Wh） | ' + fmt(r.totals.E_ac / r.input.etaInv, 1) + ' Wh |');
+    L.push('| 晴天日发电 | ' + fmt(r.panel.genDay, 1) + ' Wh |');
+    L.push('| 晴天日余量 | ' + fmt(r.panel.surplus, 1) + ' Wh |');
+    L.push('| 阴雨 ' + fmtDays(r.rain.days) + ' 天结果 | ' + rainVerdict(r).text + ' |');
+    L.push('| 年发电量估算 | ' + fmt(r.year.kwh, 1) + ' kWh（假设全年每天都等于你填的日照） |');
+    L.push('');
+    L.push('## 负载清单');
+    L.push('');
+    L.push('| 负载 | 功率 W | 每天 h | 数量 | 供电 | 同时开 | 这行一天吃多少 Wh |');
+    L.push('|---|---|---|---|---|---|---|');
+    r.loadRows.forEach(function (x) {
+      L.push('| ' + x.label + ' | ' + fmt(x.values.w, 1) + ' | ' + fmt(x.values.hours, 2) + ' | ' + x.values.qty + ' | '
+        + (x.ac ? '交流' : '直流') + ' | ' + (x.simultaneous ? '是' : '否') + ' | ' + fmt(x.E_i, 1) + ' |');
+    });
+    L.push('');
+    L.push('## 阴雨天那几天');
+    L.push('');
+    L.push('| 第几天 | 当天发电 Wh | 当天用电 Wh | 净额 Wh | 这天结束时电池还剩 Wh |');
+    L.push('|---|---|---|---|---|');
+    r.rain.rows.forEach(function (x) {
+      L.push('| ' + x.d + ' | ' + fmt(x.gen, 1) + ' | ' + fmt(x.draw, 1) + ' | ' + fmt(x.net, 1) + ' | ' + fmt(x.q, 1) + ' |');
+    });
+    if (!r.rain.rows.length) L.push('| — | — | — | — | 自持天数填的是 0，没有阴雨期 |');
+    L.push('');
+    if (r.have.verdict !== '未填') {
+      L.push('## 手上已有的东西');
+      L.push('');
+      L.push('- 判定：**' + r.have.verdict + '**');
+      if (isNum(r.have.coverage)) L.push('- 已有组件 ' + fmt(r.have.panelW, 0) + ' W → 一天能出 ' + fmt(r.have.E_sup, 1) + ' Wh，正好是日耗电的 ' + fmtPct(r.have.coverage));
+      if (isNum(r.have.d_have)) L.push('- 已有电池 ' + fmt(r.have.battAh, 0) + ' Ah → 可用 ' + fmt(r.have.usable_wh, 1) + ' Wh，能撑 ' + fmt(r.have.d_have, 2) + ' 天');
+      L.push('');
+    }
+    L.push('> 口径：能量都在电池母线侧；系统综合效率 ' + fmt(r.input.etaSys, 2) + '（不含逆变器，逆变器按 ' + fmt(r.input.etaInv, 2) + ' 单独算）；峰值日照小时 ' + fmt(r.input.psh, 2) + ' h/天由使用者填写。');
+    L.push('> 这是按日均线性模型的估算，不替代专业设计；不查任何地区的真实日照数据。');
+    return L.join('\n') + '\n';
+  }
+
+  function toJSON(state, r, meta) {
+    return JSON.stringify({
+      app: SPEC.title, version: SPEC.version,
+      exportedAt: (meta && meta.exportedAt) || '',
+      input: state, result: r
+    }, null, 2) + '\n';
+  }
+
+  function summary(r) {
+    if (!r.ok) return { ok: false, lines: ['输入有误：' + r.errors.length + ' 处'], errors: r.errors };
+    return {
+      ok: true,
+      lines: [
+        '组件 ≥ ' + fmt(r.panel.need, 1) + ' W（' + r.panel.count + ' × ' + fmt(r.panel.unit, 0) + ' W）',
+        '电池 ≥ ' + fmt(r.battery.ahNeed, 1) + ' Ah @ ' + fmt(r.input.vBat, 2) + ' V（' + r.battery.count + ' × ' + fmt(r.battery.unit, 0) + ' Ah）',
+        '控制器 ≥ ' + fmt(r.controller.amps, 1) + ' A',
+        '逆变器 ≥ ' + fmt(r.inverter.rec, 0) + ' W 连续 / 峰值 ≥ ' + fmt(r.inverter.peak, 0) + ' W'
+      ]
+    };
+  }
+
+  /* ── 建议应用到状态上（UI 与测试共用同一份实现，不各写一遍） ── */
+  function applySuggestion(state, s) {
+    var next = cloneState(state);
+    if (!s) return next;
+    if (s.kind === 'sys') { next.sys[s.path.replace(/^sys\./, '')] = String(s.value); }
+    else if (s.kind === 'have') { next.have[s.path.replace(/^have\./, '')] = String(s.value); }
+    else if (s.kind === 'load') {
+      var i = s.loadIndex;
+      if (next.loads[i]) {
+        if (s.field === 'ac' || s.field === 'simultaneous') next.loads[i][s.field] = !!s.value;
+        else next.loads[i][s.field] = String(s.value);
+      }
+    }
+    return next;
+  }
+
+  var API = {
+    SPEC: SPEC, PRESETS: PRESETS, defaultState: defaultState, cloneState: cloneState,
+    compute: compute, parseField: parseField, applySuggestion: applySuggestion,
+    fmt: fmt, fmtInt: fmtInt, fmtV: fmtV, fmtDays: fmtDays, fmtPct: fmtPct, roundDp: roundDp, ceilSafe: ceilSafe,
+    rainVerdict: rainVerdict,
+    toCSV: toCSV, toMarkdown: toMarkdown, toJSON: toJSON, summary: summary,
+    labelOf: labelOf
+  };
+  global.AppCore = API;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* 配一套自己发的电 · 界面层（ui.js）
+ * 纪律（来自 11-05 与 11-13 两次实测的坑）：
+ *   1) 数字输入一律 type=text + inputmode，state.raw 存用户原文 —— 不让浏览器静默吞掉 abc；
+ *   2) 用户打字时只重算输出区，绝不重建正在编辑的输入框（否则光标会跳、内容会被盖回去）；
+ *   3) 「点一下就改输入」的建议：先改 state.raw，再 syncInputs()，最后重算 —— 顺序错了就会出现「点了没反应」。
+ */
+(function () {
+  'use strict';
+  var A = window.AppCore;
+  var LS_KEY = 'offgrid-kit-v1-v1';
+  var state = null, result = null, errMap = {}, statusMsg = '输入存在本机';
+
+  function $(id) { return document.getElementById(id); }
+  function mk(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = String(text);
+    return e;
+  }
+  function setText(id, t) { var e = $(id); if (e) e.textContent = (t === undefined || t === null) ? '' : String(t); }
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast'); if (!t) return;
+    t.textContent = msg; t.classList.add('on');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('on'); }, 2600);
+  }
+  function nowText() {
+    var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  function stamp() {
+    var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+    return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+
+  /* ══════════ 状态 ══════════ */
+  function normalize(s) {
+    var n = A.defaultState();
+    if (s && Array.isArray(s.loads)) {
+      n.loads = s.loads.slice(0, A.SPEC.maxLoads).map(function (l) {
+        return {
+          name: l && l.name !== undefined ? String(l.name) : '',
+          w: l && l.w !== undefined ? String(l.w) : '',
+          hours: l && l.hours !== undefined ? String(l.hours) : '',
+          qty: l && l.qty !== undefined ? String(l.qty) : '',
+          ac: !!(l && l.ac),
+          simultaneous: l && l.simultaneous !== undefined ? !!l.simultaneous : true,
+          surge: l && l.surge !== undefined ? String(l.surge) : '1'
+        };
+      });
+    }
+    if (s && s.sys) A.SPEC.sys.forEach(function (f) { if (s.sys[f.key] !== undefined) n.sys[f.key] = String(s.sys[f.key]); });
+    if (s && s.have) A.SPEC.have.forEach(function (f) { if (s.have[f.key] !== undefined) n.have[f.key] = String(s.have[f.key]); });
+    return n;
+  }
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) { var s = JSON.parse(raw); if (s && s.loads) { statusMsg = '已恢复上次的输入'; return normalize(s); } }
+    } catch (e) { statusMsg = '这台设备上存不了输入（浏览器禁用了本地存储）'; }
+    return A.defaultState();
+  }
+  function saveState() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+    catch (e) { statusMsg = '这台设备上存不了输入（浏览器禁用了本地存储）'; }
+    setText('saveState', statusMsg);
+  }
+
+  /* ══════════ 输入区渲染 ══════════ */
+  var SYS_HINT = {
+    psh: '你那儿一天折合几个「满发小时」。站点相关，要你自己填；本页不查任何地区数据。',
+    etaSys: '从组件到电池的综合损失：温度、灰尘、控制器、线损、电池往返。不含逆变器（那项单独填）。',
+    etaInv: '交流负载要经过逆变器，这里填它的效率。只影响标了「交流」的行。',
+    vBat: '整套电池的标称电压：12 / 24 / 48 V 都可以填。',
+    dod: '允许多深放电。填 0.8 就是只打算用掉 80% 的容量。',
+    days: '阴雨天不出太阳时，希望还能撑几天。填 0 就是不要电池。',
+    panelW: '你打算买的那种板的单块功率。结论里的块数是按它凑整的。',
+    battUnitAh: '你打算买的那种电池的单块容量。结论里的块数是按它凑整的。',
+    reserve: '控制器电流留多少余量。这是显示层面的设计选择，不是标准。',
+    invMargin: '逆变器额定功率比「同时开的负载」大多少倍。同样是设计选择。',
+    rainFactor: '阴雨天发电相对晴天的比例。填 0.2 就是「阴雨天只发晴天的两成」。'
+  };
+  var HAVE_HINT = { panelW: '已有组件总功率；没有就留 0。', battAh: '已有电池总容量；没有就留 0。' };
+
+  function fieldEl(kind, key, value, hint, spec) {
+    var f = mk('div', 'f');
+    var lb = mk('label', 'lb', spec.label + (spec.unit ? '（' + spec.unit + '）' : ''));
+    lb.setAttribute('for', 'f_' + kind + '_' + key);
+    var inp = mk('input');
+    inp.type = 'text';
+    inp.inputMode = 'decimal';
+    inp.autocomplete = 'off';
+    inp.spellcheck = false;
+    inp.id = 'f_' + kind + '_' + key;
+    inp.value = value;
+    inp.setAttribute('data-kind', kind);
+    inp.setAttribute('data-key', key);
+    f.appendChild(lb); f.appendChild(inp);
+    if (hint) { var h = mk('div', 'hint', hint); h.id = 'h_' + kind + '_' + key; f.appendChild(h); }
+    return f;
+  }
+  function renderSys() {
+    var g = $('sysGrid');
+    g.innerHTML = '';
+    A.SPEC.sys.forEach(function (spec) {
+      g.appendChild(fieldEl('sys', spec.key, state.sys[spec.key], SYS_HINT[spec.key], spec));
+    });
+    setText('sysTail', '峰值日照 ' + state.sys.psh + ' h/天 · ' + state.sys.vBat + ' V · 自持 ' + state.sys.days + ' 天');
+  }
+  /* 注意：这个函数原来也叫 renderHave，和下面「反推结论区」的那个重名 ——
+     JS 的函数声明会互相覆盖，结果 #haveGrid 永远是空的、整个「手上已经有东西？」输入区都不渲染。
+     浏览器验收（G1「参数区 11 个字段」/G3 have 投毒）才抓到；核心测试抓不到，因为内核是好的。 */
+  function renderHaveInputs() {
+    var g = $('haveGrid');
+    g.innerHTML = '';
+    A.SPEC.have.forEach(function (spec) {
+      g.appendChild(fieldEl('have', spec.key, state.have[spec.key], HAVE_HINT[spec.key], spec));
+    });
+  }
+
+  var LOAD_COLS = A.SPEC.load;
+  function renderLoads() {
+    var tb = $('loadBody');
+    tb.innerHTML = '';
+    state.loads.forEach(function (l, i) {
+      var tr = mk('tr');
+      tr.setAttribute('data-row', String(i));
+      /* 名称 */
+      var tdN = mk('td'); tdN.setAttribute('data-label', '名称');
+      var inN = mk('input', 'name'); inN.type = 'text'; inN.autocomplete = 'off';
+      inN.id = 'f_load_' + i + '_name'; inN.value = l.name;
+      inN.setAttribute('data-row', String(i)); inN.setAttribute('data-key', 'name');
+      tdN.appendChild(inN); tr.appendChild(tdN);
+      /* 功率 / 每天 / 数量 / 启动倍率 */
+      LOAD_COLS.forEach(function (spec) {
+        var td = mk('td');
+        td.setAttribute('data-label', spec.label + (spec.unit ? ' ' + spec.unit : ''));
+        var inp = mk('input');
+        inp.type = 'text'; inp.inputMode = 'decimal'; inp.autocomplete = 'off'; inp.spellcheck = false;
+        inp.id = 'f_load_' + i + '_' + spec.key; inp.value = l[spec.key];
+        inp.setAttribute('data-row', String(i)); inp.setAttribute('data-key', spec.key);
+        if (spec.key === 'w' || spec.key === 'hours' || spec.key === 'qty' || spec.key === 'surge') inp.setAttribute('data-num', '1');
+        td.appendChild(inp); tr.appendChild(td);
+      });
+      /* 供电（交流 / 直流） */
+      var tdA = mk('td'); tdA.setAttribute('data-label', '供电');
+      var box = mk('div', 'acdc');
+      [['直流', false], ['交流', true]].forEach(function (pair) {
+        var b = mk('button', l.ac === pair[1] ? 'on' : '', pair[0]);
+        b.type = 'button';
+        b.setAttribute('data-row', String(i)); b.setAttribute('data-act', 'ac'); b.setAttribute('data-val', pair[1] ? '1' : '0');
+        box.appendChild(b);
+      });
+      tdA.appendChild(box); tr.appendChild(tdA);
+      /* 同时开 */
+      var tdS = mk('td'); tdS.setAttribute('data-label', '同时开');
+      var cw = mk('div', 'chk');
+      var cb = mk('input'); cb.type = 'checkbox'; cb.checked = !!l.simultaneous;
+      cb.id = 'f_load_' + i + '_simultaneous';
+      cb.setAttribute('data-row', String(i)); cb.setAttribute('data-key', 'simultaneous');
+      cw.appendChild(cb); tdS.appendChild(cw); tr.appendChild(tdS);
+      /* 一天吃多少 */
+      var tdE = mk('td', 'num'); tdE.setAttribute('data-label', '一天吃多少');
+      var span = mk('span', 'rowE'); span.id = 'e_row_' + i; span.textContent = '—';
+      tdE.appendChild(span); tr.appendChild(tdE);
+      /* 删 */
+      var tdX = mk('td', 'del'); tdX.setAttribute('data-label', '删除这一行');
+      var bx = mk('button', 'btn x', '删掉'); bx.type = 'button';
+      bx.setAttribute('data-row', String(i)); bx.setAttribute('data-act', 'del');
+      bx.title = '删掉这一行';
+      bx.setAttribute('aria-label', '删掉第 ' + (i + 1) + ' 行');
+      tdX.appendChild(bx); tr.appendChild(tdX);
+      tb.appendChild(tr);
+    });
+    setText('loadCount', state.loads.length + ' 行');
+  }
+  function renderPresets() {
+    var s = $('presetSel');
+    s.innerHTML = '';
+    var o0 = mk('option', '', '快速试一个场景…'); o0.value = ''; s.appendChild(o0);
+    A.PRESETS.forEach(function (p) {
+      var o = mk('option', '', p.name); o.value = p.id; s.appendChild(o);
+    });
+  }
+
+  /* 把 state 里的值写回已有输入框（只在「程序改了状态」时调用，不在打字时调用） */
+  function syncInputs() {
+    A.SPEC.sys.forEach(function (f) { var e = $('f_sys_' + f.key); if (e) e.value = state.sys[f.key]; });
+    A.SPEC.have.forEach(function (f) { var e = $('f_have_' + f.key); if (e) e.value = state.have[f.key]; });
+    state.loads.forEach(function (l, i) {
+      var e;
+      e = $('f_load_' + i + '_name'); if (e) e.value = l.name;
+      LOAD_COLS.forEach(function (f) { e = $('f_load_' + i + '_' + f.key); if (e) e.value = l[f.key]; });
+      e = $('f_load_' + i + '_simultaneous'); if (e) e.checked = !!l.simultaneous;
+      var box = document.querySelector('.acdc button[data-row="' + i + '"][data-val="' + (l.ac ? '1' : '0') + '"]');
+      [].forEach.call(document.querySelectorAll('.acdc button[data-row="' + i + '"]'), function (b) { b.classList.toggle('on', b === box); });
+    });
+    setText('sysTail', '峰值日照 ' + state.sys.psh + ' h/天 · ' + state.sys.vBat + ' V · 自持 ' + state.sys.days + ' 天');
+  }
+
+  /* ══════════ 输出区渲染 ══════════ */
+  function renderErrors() {
+    var bar = $('errbar'), list = $('errList');
+    list.innerHTML = '';
+    var errs = result.ok ? [] : result.errors;
+    errMap = {};
+    errs.forEach(function (e) { if (!errMap[e.field]) errMap[e.field] = { code: e.code, message: e.message }; });
+    if (errs.length) {
+      var seen = {}, uniq = [];
+      errs.forEach(function (e) { if (!seen[e.field]) { seen[e.field] = 1; uniq.push(e); } });
+      uniq.slice(0, 12).forEach(function (e) { list.appendChild(mk('li', '', e.message)); });
+      setText('errCount', uniq.length);
+      setText('errMore', uniq.length > 12 ? '还有 ' + (uniq.length - 12) + ' 处没有列出来；改掉上面这些就会自动重算。' : '改掉以后会自动重算，不用点任何按钮。');
+      bar.classList.add('on');
+    } else {
+      /* 无错时**不能**直接 return：那样上一次的 .bad 标红会一直留在输入框上
+         （浏览器验收 G3「改回合法：没有输入框还留着标红」抓到的就是这个）。 */
+      bar.classList.remove('on');
+      setText('errCount', 0);
+      setText('errMore', '');
+    }
+    /* 标记输入框 */
+    [].forEach.call(document.querySelectorAll('input[data-kind],input[data-row][data-key]'), function (inp) {
+      var kind = inp.getAttribute('data-kind');
+      var field;
+      if (kind) field = kind + '.' + inp.getAttribute('data-key');
+      else {
+        var r = inp.getAttribute('data-row'), k = inp.getAttribute('data-key');
+        field = (k === 'name' || k === 'simultaneous') ? null : 'loads[' + r + '].' + k;
+      }
+      var bad = field && errMap[field];
+      inp.classList.toggle('bad', !!bad);
+      var h = field && $('h_' + kind + '_' + inp.getAttribute('data-key'));
+      if (h && kind) {
+        if (bad) { h.className = 'hint bad'; h.textContent = bad.message; }
+        else { h.className = 'hint'; h.textContent = (kind === 'sys' ? SYS_HINT : HAVE_HINT)[inp.getAttribute('data-key')] || ''; }
+      }
+    });
+  }
+
+  function renderConclusion() {
+    var r = result;
+    if (!r.ok) {
+      setText('cLead', '输入还有 ' + r.errors.length + ' 处问题，先把它们改掉 —— 现在给不出结论。');
+      ['cPanel', 'cBatt', 'cCtrl', 'cInv', 'cDay', 'cGen', 'cRain', 'cYear',
+        'cPanelD', 'cBattD', 'cCtrlD', 'cInvD'].forEach(function (id) { setText(id, '—'); });
+      return;
+    }
+    var rows = r.loadRows.length;
+    setText('cLead', '按你填的 ' + rows + ' 行负载，一天要用 ' + A.fmt(r.totals.E_day, 1) + ' Wh。下面是照着买的最小规格：');
+    var q = function (id, v, unit, d) {
+      var e = $(id);
+      e.innerHTML = '';
+      e.appendChild(document.createTextNode(v));
+      if (unit) { var s = mk('small', '', unit); e.appendChild(s); }
+      setText(id + 'D', d);
+    };
+    q('cPanel', A.fmt(r.panel.need, 1), 'W', r.panel.count + ' × ' + A.fmt(r.panel.unit, 0) + ' W，装机 ' + A.fmt(r.panel.installed, 0) + ' W');
+    q('cBatt', A.fmt(r.battery.ahNeed, 1), 'Ah', r.battery.count + ' × ' + A.fmt(r.battery.unit, 0) + ' Ah @ ' + A.fmtV(r.input.vBat) + ' V');
+    q('cCtrl', A.fmt(r.controller.amps, 1), 'A', '装机 ÷ ' + A.fmtV(r.input.vBat) + ' V，含 ' + A.fmt(r.controller.reserve * 100, 0) + '% 余量');
+    q('cInv', A.fmt(r.inverter.rec, 0), 'W', '连续；峰值能力要 ≥ ' + A.fmt(r.inverter.peak, 0) + ' W');
+    setText('cDay', '日耗电 ' + A.fmt(r.totals.E_day, 1) + ' Wh（直流 ' + A.fmt(r.totals.E_dc, 1) + ' ＋ 交流含损 ' + A.fmt(r.totals.E_ac / r.input.etaInv, 1) + '）');
+    setText('cGen', '晴天日发电 ' + A.fmt(r.panel.genDay, 1) + ' Wh，余 ' + A.fmt(r.panel.surplus, 1) + ' Wh');
+    setText('cRain', '阴雨天：' + A.rainVerdict(r).text);
+    setText('cYear', '年发电约 ' + A.fmt(r.year.kwh, 1) + ' kWh（假设全年都按你填的日照）');
+  }
+
+  function renderRowEnergy() {
+    state.loads.forEach(function (l, i) {
+      var e = $('e_row_' + i);
+      if (!e) return;
+      var row = result.loadRows[i];
+      if (!row || row.E_i === null || row.E_i === undefined) {
+        e.className = 'rowE na';
+        var bits = [];
+        if (row && row.errors.length) row.errors.forEach(function (x) { bits.push(x.message); });
+        e.textContent = bits.length ? '这行填得不对' : '—';
+        e.title = bits.join('；');
+      } else {
+        e.className = 'rowE';
+        e.textContent = A.fmt(row.E_i, 1) + ' Wh';
+        e.title = row.ac
+          ? A.fmt(row.raw_wh, 1) + ' Wh（交流侧）÷ ' + A.fmt(result.input.etaInv, 2) + ' = ' + A.fmt(row.E_i, 1) + ' Wh'
+          : A.fmt(row.values.w, 1) + ' W × ' + A.fmt(row.values.hours, 2) + ' h × ' + row.values.qty + ' = ' + A.fmt(row.E_i, 1) + ' Wh';
+      }
+    });
+    setText('loadTotal', result.ok ? A.fmt(result.totals.E_day, 1) + ' Wh' : '—');
+  }
+
+  function renderSheet() {
+    var tb = $('sheetBody');
+    tb.innerHTML = '';
+    if (!result.ok) {
+      var tr = mk('tr'); var td = mk('td', '', '输入有误，先把上面的问题改掉。');
+      td.colSpan = 4; tr.appendChild(td); tb.appendChild(tr);
+      setText('sheetTail', '');
+      return;
+    }
+    var r = result;
+    var rows = [
+      ['组件', A.fmt(r.panel.need, 1) + ' W', r.panel.count + ' 块 × ' + A.fmt(r.panel.unit, 0) + ' W',
+        '日耗电 ' + A.fmt(r.totals.E_day, 1) + ' Wh ÷ (' + A.fmt(r.input.psh, 2) + ' h/天 × ' + A.fmt(r.input.etaSys, 2) + ') = ' + A.fmt(r.panel.need, 1) + ' W，向上取整到整块 ⇒ 装机 ' + A.fmt(r.panel.installed, 0) + ' W'],
+      ['电池', A.fmt(r.battery.ahNeed, 1) + ' Ah @ ' + A.fmtV(r.input.vBat) + ' V', r.battery.count + ' 块 × ' + A.fmt(r.battery.unit, 0) + ' Ah',
+        '可用 ' + A.fmt(r.battery.useWh, 1) + ' Wh = 日耗电 × ' + A.fmt(r.input.days, 1) + ' 天；标称 ' + A.fmt(r.battery.nomWh, 1) + ' Wh = 可用 ÷ ' + A.fmt(r.input.dod, 2) + ' 放电深度；÷ ' + A.fmtV(r.input.vBat) + ' V = ' + A.fmt(r.battery.ahNeed, 1) + ' Ah'],
+      ['控制器', A.fmt(r.controller.amps, 1) + ' A', '1 台',
+        '装机 ' + A.fmt(r.panel.installed, 0) + ' W ÷ ' + A.fmtV(r.input.vBat) + ' V × (1 + ' + A.fmt(r.input.reserve, 2) + ' 余量) = ' + A.fmt(r.controller.amps, 1) + ' A（MPPT 输出侧口径）'],
+      ['逆变器', A.fmt(r.inverter.rec, 0) + ' W 连续', r.inverter.cont > 0 ? '峰值 ≥ ' + A.fmt(r.inverter.peak, 0) + ' W' : '不需要',
+        r.inverter.cont > 0
+          ? '要同时开的交流负载 ' + A.fmt(r.inverter.cont, 0) + ' W × ' + A.fmt(r.inverter.margin, 2) + ' 余量 = ' + A.fmt(r.inverter.rec, 0) + ' W；峰值按启动倍率算 = ' + A.fmt(r.inverter.peak, 0) + ' W'
+          : '清单里没有交流负载，可以不用逆变器。']
+    ];
+    rows.forEach(function (x) {
+      var tr = mk('tr');
+      [['part', '部件'], ['spec', '规格'], ['cnt', '数量'], ['why', '怎么来的']].forEach(function (p, i) {
+        var td = mk('td', p[0], x[i]);
+        td.setAttribute('data-label', p[1]);
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    setText('sheetTail', '共 4 项');
+  }
+
+  function renderRain() {
+    var box = $('rainBox');
+    box.innerHTML = '';
+    setText('rainPct', A.fmt(result.ok ? result.input.rainFactor * 100 : 20, 0) + '%');
+    if (!result.ok) { setText('rainTail', '—'); setText('rainVerdict', '输入有误，先改掉上面的问题。'); return; }
+    var r = result.rain;
+    setText('rainTail', r.days + ' 天 · 阴雨天日照系数 ' + A.fmt(r.factor, 2));
+    if (!r.days) {
+      box.appendChild(mk('div', 'rv', '自持天数填的是 0，不需要电池，也就没有阴雨期。'));
+      setText('rainVerdict', '');
+      return;
+    }
+    r.rows.forEach(function (x) {
+      var cls = 'day';
+      if (r.firstEmptyDay !== null && x.d >= r.firstEmptyDay) cls += ' short';
+      else if (x.q <= 0) cls += ' empty';
+      var d = mk('div', cls);
+      d.setAttribute('data-day', String(x.d));
+      d.appendChild(mk('div', 'dt', '第 ' + x.d + ' 天'));
+      var bar = mk('div', 'bar');
+      var i = mk('i');
+      var pct = result.battery.useWh > 0 ? Math.max(0, Math.min(1, x.q / result.battery.useWh)) * 100 : 0;
+      i.style.width = (x.q <= 0 ? 0 : Math.max(2, pct)) + '%';
+      bar.appendChild(i); d.appendChild(bar);
+      d.appendChild(mk('div', 'qv', A.fmt(x.q, 1) + ' Wh'));
+      d.setAttribute('data-q', String(x.q));
+      d.title = '第 ' + x.d + ' 天：发电 ' + A.fmt(x.gen, 1) + ' Wh − 用电 ' + A.fmt(x.draw, 1) + ' Wh = 净 ' + A.fmt(x.net, 1) + ' Wh；结束时剩 ' + A.fmt(x.q, 1) + ' Wh（可用容量一共 ' + A.fmt(result.battery.useWh, 1) + ' Wh）';
+      box.appendChild(d);
+    });
+    var v = A.rainVerdict(result);
+    var p = $('rainVerdict');
+    p.innerHTML = '';
+    p.appendChild(mk('b', '', v.text));
+    p.appendChild(document.createTextNode('　'));
+    p.appendChild(mk('span', 'dd', v.detail + (result.rain.spill > 0 ? '阴雨期共弃掉 ' + A.fmt(result.rain.spill, 1) + ' Wh（充满后存不下）。' : '')));
+  }
+
+  function renderHave() {
+    var out = $('haveOut');
+    out.innerHTML = '';
+    if (!result.ok) {
+      out.className = 'verdict';
+      out.appendChild(mk('div', 'vt', '输入有误'));
+      out.appendChild(mk('div', 'vd', '先把上面的问题改掉。'));
+      return;
+    }
+    var h = result.have;
+    var cls = h.verdict === '都够' ? 'verdict ok' : (h.verdict === '未填' ? 'verdict' : 'verdict short');
+    out.className = cls;
+    out.appendChild(mk('div', 'vt', h.verdict === '未填' ? '还没填已有设备' : '判定：' + h.verdict));
+    var lines = [];
+    if (h.panelW > 0) {
+      lines.push('已有组件 ' + A.fmt(h.panelW, 0) + ' W：一天能出 ' + A.fmt(h.E_sup, 1) + ' Wh，正好是日耗电（' + A.fmt(result.totals.E_day, 1) + ' Wh）的 ' + A.fmtPct(h.coverage) + '。');
+    }
+    if (h.battAh > 0) {
+      lines.push('已有电池 ' + A.fmt(h.battAh, 0) + ' Ah：可用 ' + A.fmt(h.usable_wh, 1) + ' Wh，能撑 ' + A.fmt(h.d_have, 2) + ' 天（你要的是 ' + A.fmt(result.input.days, 1) + ' 天）。');
+    }
+    if (!lines.length) lines.push('填上已有设备的规格，这里会给出覆盖率、能撑几天、短板在哪。');
+    lines.forEach(function (t) {
+      var d = mk('div', 'vd', t);
+      d.style.marginTop = '3px';
+      out.appendChild(d);
+    });
+  }
+
+  function renderAdvice() {
+    var ul = $('advList');
+    ul.innerHTML = '';
+    if (!result.ok) { ul.appendChild(mk('li', '', '输入有误，先把上面的问题改掉。')); return; }
+    if (!result.suggestions.length) {
+      var li = mk('li'); li.appendChild(mk('div', 'none', '现在这一套没有明显的可改项 —— 也可以试着把某一行负载的每天小时数改大，看结论怎么动。'));
+      ul.appendChild(li); return;
+    }
+    result.suggestions.forEach(function (s) {
+      var li = mk('li');
+      var txt = mk('div', 'txt');
+      txt.appendChild(mk('div', 't', s.title));
+      txt.appendChild(mk('div', 'w', s.why));
+      li.appendChild(txt);
+      var b = mk('button', 'btn sm', '就这么改');
+      b.type = 'button';
+      b.setAttribute('data-adv', s.id);
+      li.appendChild(b);
+      ul.appendChild(li);
+    });
+  }
+
+  function renderOutputs() {
+    renderErrors();
+    renderConclusion();
+    renderRowEnergy();
+    renderSheet();
+    renderRain();
+    renderHave();
+    renderAdvice();
+  }
+  function recompute() { result = A.compute(state); }
+  function renderAll() { recompute(); renderSys(); renderHaveInputs(); renderLoads(); syncInputs(); renderOutputs(); }
+  function render() { recompute(); renderOutputs(); }
+
+  /* ══════════ 交互 ══════════ */
+  function setRaw(kind, key, value) {
+    if (kind === 'sys') state.sys[key] = String(value);
+    else if (kind === 'have') state.have[key] = String(value);
+  }
+  function onInput(ev) {
+    var t = ev.target;
+    if (!t || t.tagName !== 'INPUT') return;
+    var kind = t.getAttribute('data-kind');
+    if (kind) { setRaw(kind, t.getAttribute('data-key'), t.value); saveState(); render(); return; }
+    var row = t.getAttribute('data-row');
+    if (row === null) return;
+    var key = t.getAttribute('data-key');
+    var i = Number(row);
+    if (!state.loads[i]) return;
+    if (key === 'simultaneous') state.loads[i].simultaneous = !!t.checked;
+    else state.loads[i][key] = t.value;
+    saveState();
+    render();  /* 只重算输出区；输入框不重建，光标不会跳 */
+  }
+  function onClick(ev) {
+    var t = ev.target;
+    if (!t) return;
+    var adv = t.getAttribute && t.getAttribute('data-adv');
+    if (adv) {
+      var s = null;
+      result.suggestions.forEach(function (x) { if (x.id === adv) s = x; });
+      if (!s) return;
+      /* 顺序很重要：先改 state.raw，再同步输入框，最后重算 —— 反过来就会出现「点了没反应」 */
+      state = A.applySuggestion(state, s);
+      state.presetId = state.presetId || 'rv';
+      saveState();
+      syncInputs();
+      render();
+      toast('已按建议改掉输入，结果已重算');
+      return;
+    }
+    var act = t.getAttribute && t.getAttribute('data-act');
+    if (!act) return;
+    var i = Number(t.getAttribute('data-row'));
+    if (!state.loads[i]) return;
+    if (act === 'ac') {
+      state.loads[i].ac = t.getAttribute('data-val') === '1';
+      saveState(); syncInputs(); render();
+      toast('第 ' + (i + 1) + ' 行改成' + (state.loads[i].ac ? '交流' : '直流') + '，已重算');
+    } else if (act === 'del') {
+      if (state.loads.length <= 1) { toast('至少留一行'); return; }
+      state.loads.splice(i, 1);
+      saveState(); renderLoads(); render();
+      toast('删掉了 1 行，剩 ' + state.loads.length + ' 行');
+    }
+  }
+
+  /* ══════════ 下载 ══════════ */
+  function download(name, blob) {
+    var u = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = u; a.download = name; a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(u); if (a.parentNode) a.parentNode.removeChild(a); }, 5000);
+  }
+  function exportCsv() {
+    var csv = A.toCSV(state, result, { exportedAt: nowText() });
+    download('offgrid-kit-csv-' + stamp() + '.csv', new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    toast('CSV 已导出（含 BOM，Excel 直接打开不乱码）');
+  }
+  function exportMd() {
+    var md = A.toMarkdown(state, result, { exportedAt: nowText() });
+    download('offgrid-kit-md-' + stamp() + '.md', new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+    toast('Markdown 已导出');
+  }
+  function exportJson() {
+    var js = A.toJSON(state, result, { exportedAt: nowText() });
+    download('offgrid-kit-json-' + stamp() + '.json', new Blob([js], { type: 'application/json;charset=utf-8' }));
+    toast('JSON 备份已导出');
+  }
+
+  var C = { paper: '#ffffff', ink: '#1f2933', ink2: '#52606d', ink3: '#7b8794', line: '#d9e2ec', line2: '#eef2f7', solar: '#d97706', bat: '#0e7490', ok: '#15803d', err: '#b91c1c' };
+  function wrap(ctx, text, x, y, maxW, lh) {
+    var line = '', yy = y;
+    var words = String(text).split('');
+    for (var i = 0; i < words.length; i++) {
+      var test = line + words[i];
+      if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line, x, yy); line = words[i]; yy += lh; }
+      else line = test;
+    }
+    if (line) { ctx.fillText(line, x, yy); yy += lh; }
+    return yy;
+  }
+  function drawCard() {
+    var W = 1080, H = 1350;
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var g = cv.getContext('2d');
+    g.fillStyle = C.paper; g.fillRect(0, 0, W, H);
+    g.fillStyle = C.solar; g.fillRect(0, 0, W, 14);
+    var M = 68;
+    g.textBaseline = 'top';
+    g.fillStyle = C.ink;
+    g.font = '600 52px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText(A.SPEC.title, M, 62);
+    g.fillStyle = C.ink2;
+    g.font = '26px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('离网光伏配置单 · 照着买的最小规格', M, 130);
+    g.fillStyle = C.ink3; g.font = '21px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillText('算这张卡的时间：' + nowText(), M, 168);
+    g.strokeStyle = C.line; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(M, 212); g.lineTo(W - M, 212); g.stroke();
+
+    var y = 240;
+    if (!result.ok) {
+      g.fillStyle = C.err; g.font = '600 30px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      g.fillText('输入有 ' + result.errors.length + ' 处问题，没有结论', M, y);
+      y += 52;
+      g.font = '23px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif'; g.fillStyle = C.ink2;
+      result.errors.slice(0, 6).forEach(function (e) { y = wrap(g, '· ' + e.message, M, y, W - 2 * M, 34); });
+    } else {
+      var r = result;
+      var quads = [
+        ['组件', A.fmt(r.panel.need, 1) + ' W', r.panel.count + ' × ' + A.fmt(r.panel.unit, 0) + ' W，装机 ' + A.fmt(r.panel.installed, 0) + ' W'],
+        ['电池', A.fmt(r.battery.ahNeed, 1) + ' Ah', r.battery.count + ' × ' + A.fmt(r.battery.unit, 0) + ' Ah @ ' + A.fmt(r.input.vBat, 2) + ' V'],
+        ['控制器', A.fmt(r.controller.amps, 1) + ' A', '装机 ÷ ' + A.fmt(r.input.vBat, 0) + ' V，含 ' + A.fmt(r.controller.reserve * 100, 0) + '% 余量'],
+        ['逆变器', A.fmt(r.inverter.rec, 0) + ' W', '连续；峰值 ≥ ' + A.fmt(r.inverter.peak, 0) + ' W']
+      ];
+      var cw = (W - 2 * M - 22) / 2;
+      quads.forEach(function (q, i) {
+        var x = M + (i % 2) * (cw + 22), yy = y + Math.floor(i / 2) * 152;
+        g.fillStyle = C.line2; g.fillRect(x, yy, cw, 134);
+        g.fillStyle = C.ink3; g.font = '22px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+        g.fillText(q[0], x + 22, yy + 18);
+        g.fillStyle = i === 0 ? C.solar : (i === 1 ? C.bat : C.ink);
+        g.font = '600 46px ui-monospace,Menlo,monospace';
+        g.fillText(q[1], x + 22, yy + 50);
+        g.fillStyle = C.ink3; g.font = '19px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+        wrap(g, q[2], x + 22, yy + 104, cw - 44, 24);
+      });
+      y += 152 * 2 + 14;
+      g.strokeStyle = C.line; g.beginPath(); g.moveTo(M, y); g.lineTo(W - M, y); g.stroke();
+      y += 20;
+      g.fillStyle = C.ink2; g.font = '600 25px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      g.fillText('账', M, y); y += 40;
+      var items = [
+        ['日耗电（电池侧）', A.fmt(r.totals.E_day, 1) + ' Wh', '直流 ' + A.fmt(r.totals.E_dc, 1) + ' ＋ 交流含损 ' + A.fmt(r.totals.E_ac / r.input.etaInv, 1)],
+        ['其中逆变损失', A.fmt(r.totals.E_invLoss, 1) + ' Wh', '交流侧原始用电 ' + A.fmt(r.totals.E_ac, 1) + ' Wh'],
+        ['晴天日发电', A.fmt(r.panel.genDay, 1) + ' Wh', '装机 × 日照 ' + A.fmt(r.input.psh, 2) + ' h × 效率 ' + A.fmt(r.input.etaSys, 2)],
+        ['晴天日余量', A.fmt(r.panel.surplus, 1) + ' Wh', '发电 − 用电'],
+        ['阴雨 ' + r.rain.days + ' 天', A.rainVerdict(r).text, '阴雨天日照系数 ' + A.fmt(r.rain.factor, 2)],
+        ['年发电估算', A.fmt(r.year.kwh, 1) + ' kWh', '假设全年每天都等于你填的日照']
+      ];
+      g.font = '21px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      items.forEach(function (it) {
+        g.fillStyle = C.ink2; g.fillText(it[0], M, y);
+        g.fillStyle = C.ink; g.font = '600 21px ui-monospace,Menlo,monospace';
+        g.textAlign = 'right'; g.fillText(it[1], W - M, y); g.textAlign = 'left';
+        g.fillStyle = C.ink3; g.font = '18px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+        g.fillText(it[2], M + 210, y + 1);
+        g.font = '21px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+        y += 33;
+      });
+      y += 10;
+      g.strokeStyle = C.line; g.beginPath(); g.moveTo(M, y); g.lineTo(W - M, y); g.stroke();
+      y += 20;
+      g.fillStyle = C.ink2; g.font = '600 25px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      g.fillText('要带的东西', M, y); y += 38;
+      g.font = '20px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      r.loadRows.forEach(function (x) {
+        g.fillStyle = C.ink; g.fillText(x.label, M, y);
+        g.fillStyle = C.ink3; g.font = '18px ui-monospace,Menlo,monospace';
+        g.fillText(A.fmt(x.values.w, 1) + ' W × ' + A.fmt(x.values.hours, 2) + ' h × ' + x.values.qty + (x.ac ? '（交流）' : ''), M + 250, y + 2);
+        g.fillStyle = C.ink; g.font = '600 20px ui-monospace,Menlo,monospace';
+        g.textAlign = 'right'; g.fillText(A.fmt(x.E_i, 1) + ' Wh', W - M, y); g.textAlign = 'left';
+        g.font = '20px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+        y += 30;
+      });
+    }
+    g.fillStyle = C.ink3; g.font = '17px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    var fy = H - 108;
+    g.strokeStyle = C.line; g.beginPath(); g.moveTo(M, fy - 22); g.lineTo(W - M, fy - 22); g.stroke();
+    var note = '按日均线性模型估算，不替代专业设计；不查任何地区的真实日照数据，也不查产品参数。默认场景是虚构示例。';
+    fy = wrap(g, note, M, fy, W - 2 * M, 24);
+    g.fillText(A.SPEC.title + ' · ' + A.SPEC.version, M, fy + 2);
+    return cv;
+  }
+  function exportPng() {
+    var cv;
+    try { cv = drawCard(); } catch (e) { toast('结果卡画不出来：' + e.message); return; }
+    var done = function (blob) {
+      if (!blob) { toast('结果卡导出失败（画布没有产出图片）'); return; }
+      download('offgrid-kit-card-' + stamp() + '.png', blob);
+      toast('结果卡已导出（1080×1350）');
+    };
+    if (cv.toBlob) {
+      cv.toBlob(function (b) {
+        if (b) { done(b); return; }
+        try {
+          var d = cv.toDataURL('image/png');
+          var bin = atob(d.split(',')[1]), arr = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          done(new Blob([arr], { type: 'image/png' }));
+        } catch (e) { toast('结果卡导出失败：' + e.message); }
+      }, 'image/png');
+    } else {
+      var d2 = cv.toDataURL('image/png');
+      var bin2 = atob(d2.split(',')[1]), arr2 = new Uint8Array(bin2.length);
+      for (var i2 = 0; i2 < bin2.length; i2++) arr2[i2] = bin2.charCodeAt(i2);
+      done(new Blob([arr2], { type: 'image/png' }));
+    }
+  }
+
+  /* ══════════ 初始化 ══════════ */
+  function init() {
+    state = loadState();
+    renderPresets();
+    renderAll();
+    document.addEventListener('input', onInput, true);
+    document.addEventListener('change', onInput, true);
+    document.addEventListener('click', onClick, true);
+    $('addLoad').addEventListener('click', function () {
+      if (state.loads.length >= A.SPEC.maxLoads) { toast('最多 ' + A.SPEC.maxLoads + ' 行'); return; }
+      state.loads.push({ name: '新负载', w: '20', hours: '2', qty: '1', ac: false, simultaneous: true, surge: '1' });
+      saveState(); renderLoads(); render();
+      toast('加了一行，改完数字会自动重算');
+    });
+    $('resetBtn').addEventListener('click', function () {
+      state = A.defaultState();
+      saveState(); renderAll(); toast('已恢复默认场景');
+    });
+    $('presetSel').addEventListener('change', function () {
+      var v = this.value;
+      if (!v) return;
+      state = A.defaultState(v);
+      state.presetId = v;
+      saveState(); renderAll(); this.value = '';
+      var p = null; A.PRESETS.forEach(function (x) { if (x.id === v) p = x; });
+      toast('已换成场景：' + (p ? p.name : v) + (p && p.note ? '（' + p.note + '）' : ''));
+    });
+    $('expCsv').addEventListener('click', exportCsv);
+    $('expMd').addEventListener('click', exportMd);
+    $('expJson').addEventListener('click', exportJson);
+    $('expPng').addEventListener('click', exportPng);
+    saveState();
+  }
+
+  /* 给验收脚本用的接口（不是给页面用的） */
+  window.OffgridKitUI = {
+    get state() { return state; },
+    get result() { return result; },
+    setRaw: function (kind, key, v) {
+      setRaw(kind, key, v); saveState(); syncInputs(); render();
+    },
+    setLoad: function (i, key, v) {
+      if (!state.loads[i]) return 'no-row';
+      if (key === 'ac' || key === 'simultaneous') state.loads[i][key] = !!v; else state.loads[i][key] = String(v);
+      saveState(); syncInputs(); render(); return 'ok';
+    },
+    setInputEl: function (id, v) {
+      var e = $(id); if (!e) return 'no-el';
+      e.value = v;
+      e.dispatchEvent(new Event('input', { bubbles: true }));
+      return 'ok';
+    },
+    applyAdvice: function (id) {
+      var s = null;
+      result.suggestions.forEach(function (x) { if (x.id === id) s = x; });
+      if (!s) return 'no-such-advice';
+      state = A.applySuggestion(state, s);
+      saveState(); syncInputs(); render();
+      return 'ok';
+    },
+    addRow: function () { $('addLoad').click(); return state.loads.length; },
+    delRow: function (i) {
+      var b = document.querySelector('.btn.x[data-row="' + i + '"]');
+      if (!b) return 'no-btn';
+      b.click(); return state.loads.length;
+    },
+    setAc: function (i, ac) {
+      var b = document.querySelector('.acdc button[data-row="' + i + '"][data-val="' + (ac ? '1' : '0') + '"]');
+      if (!b) return 'no-btn';
+      b.click(); return 'ok';
+    },
+    loadPreset: function (id) {
+      var s = $('presetSel'); s.value = id;
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+      return 'ok';
+    },
+    reset: function () { $('resetBtn').click(); return 'ok'; },
+    render: function () { render(); return 'ok'; },
+    summary: function () { return A.summary(result); }
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
